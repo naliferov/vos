@@ -1,0 +1,8 @@
+{
+  "type": "module",
+  "dependencies": {
+    "eventsource": "^2.0.2",
+    "monaco-editor": "^0.34.0",
+    "node-ssh": "^13.0.0"
+  }
+}

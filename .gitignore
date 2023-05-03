@@ -1,0 +1,12 @@
+.idea
+node
+node_modules
+node_modules.zip
+node-v*-linux-x64
+node*.tar.xz
+netId.txt
+font.zip
+state.zip
+index.log
+secrets.json
+.DS_Store
