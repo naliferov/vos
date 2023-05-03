@@ -1,6 +1,6 @@
-# Radiator &middot; [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/naliferov/radiator/blob/main/LICENSE)
+# Ra &middot; [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/naliferov/radiator/blob/main/LICENSE)
 
-Radiator is a high level operating system. It uses Node.js and browser user interface.
+Ra is a high level operating system. It uses Node.js and browser user interface.
 
 ## Installation
 
@@ -15,4 +15,4 @@ Radiator is a high level operating system. It uses Node.js and browser user inte
 ## Contributing
 ### License
 
-Radiator is [MIT licensed](./LICENSE).
+Ra is [MIT licensed](./LICENSE).

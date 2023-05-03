@@ -4,6 +4,7 @@
 
         init(v, http) {
             const authPanel = new v({class: ['flex', 'authPanel']});
+            //this.v.attachShadow();
 
             const tokenInput = new v({tagName: 'input', txt: 'clear', class: ['tokenInput']});
             tokenInput.setAttr('placeholder', 'token');
