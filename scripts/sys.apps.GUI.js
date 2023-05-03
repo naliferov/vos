@@ -71,11 +71,11 @@ async () => {
             // }));
 
             const input = new (await s.f('sys.ui.input'));
-            input.onKeyDown(async (e) => await outliner.handleKeyDown(e));
-            input.onKeyUp(async (e) => await outliner.handleKeyUp(e));
-            input.onClick(async (e) => await outliner.handleClick(e));
-            input.onDblClick(async (e) => await outliner.handleDblClick(e));
-            input.onContextMenu(e => outliner.handleContextMenu(e));
+            //input.onKeyDown(async (e) => await outliner.handleKeyDown(e));
+            // input.onKeyUp(async (e) => await outliner.handleKeyUp(e));
+            // input.onClick(async (e) => await outliner.handleClick(e));
+            // input.onDblClick(async (e) => await outliner.handleDblClick(e));
+            // input.onContextMenu(e => outliner.handleContextMenu(e));
             this.input = input;
 
             e['openNode'] = async ({appPath = 'apps.monacoEditor', outlinerNode}) => {
@@ -89,24 +89,24 @@ async () => {
 
                 localState.setOutlinerWidth(outlinerWidth);
 
-                const appContainerWidth = window.innerWidth - outlinerWidth - this.resizer.getSizes().width;
+                const appContainerWidth = window.innerWidth - outlinerWidth.width;
                 appsManager.setWidth(appContainerWidth);
             }
             e['terminalSizeChanged'] = () => {
                 s.e('recalcDimensions');
             }
             e['recalcDimensions'] = () => {
-                const height = window.innerHeight - terminal.getHeight();
+                //const height = window.innerHeight - terminal.getHeight();
 
-                outliner.setHeight(height - runBtn.getSizes().height);
-                appsManager.setHeight(height);
+                //outliner.setHeight(height - runBtn.getSizes().height);
+                //appsManager.setHeight(height);
 
-                const appContainerWidth = window.innerWidth - this.outliner.getWidth() - this.resizer.getSizes().width;
-                appsManager.setWidth(appContainerWidth);
+                //const appContainerWidth = window.innerWidth - this.outliner.getWidth();
+                //appsManager.setWidth(appContainerWidth);
             }
             e['getDimensionsForAppContainer'] = () => {
                 return {
-                    width: window.innerWidth - this.outliner.getWidth() - this.resizer.getSizes().width,
+                    width: window.innerWidth - this.outliner.getWidth(),
                     height: window.innerHeight - terminal.getHeight() - appsManager.getTabsHeight()
                 }
             };
@@ -168,25 +168,15 @@ async () => {
             }
             e['app.addViewElement'] = v => e('>', [v, app]);
 
+            const localState = new (await s.f('sys.apps.GUI.localState'));
+
             //BUILDING UI
             const app = new this.v;
             app.setDOM(document.getElementById('app'));
 
-            const mainContainer = new this.v({class: ['mainContainer', 'flex']});
-            this.mainContainer = mainContainer;
-            e('>', [mainContainer, app]);
-
-            const localState = new (await s.f('sys.apps.GUI.localState'));
-
-            s.sys.popup = new (await s.f('sys.apps.GUI.popup'));
-            e('>', [s.sys.popup, app]);
-
-            //todo change sideBarWith not outliner
-            const sideBar = new this.v({class: ['sideBar']})
-            e('>', [sideBar, mainContainer]);
 
             const runBtn = new this.v({class: 'burger-btn'});
-            e('>', [runBtn, sideBar]);
+            e('>', [runBtn, app]);
             [1,1,1].forEach(() => e('>', [new this.v({ class: 'burger-line' }), runBtn]));
 
             runBtn.on('pointerdown', (e) => {
@@ -206,44 +196,61 @@ async () => {
                 //oBtn.on('pointerenter', removeSubmenu);
                 window.e('>', [oBtn, popup]);
 
-                // oBtn = createBtn('Sign out');
-                // oBtn.on('click', () => {
-                //     popup.clear();
-                // });
+                oBtn = createBtn('Data Browser');
+                oBtn.on('click', () => {
+                    popup.clear();
+                });
                 //oBtn.on('pointerenter', removeSubmenu);
-                //window.e('>', [oBtn, popup]);
+                window.e('>', [oBtn, popup]);
 
                 popup.putRightTo(runBtn);
             });
 
+            const mainContainer = new this.v({class: ['mainContainer']});
+            this.mainContainer = mainContainer;
+            e('>', [mainContainer, app]);
+            s.sys.popup = new (await s.f('sys.apps.GUI.popup'));
+            e('>', [s.sys.popup, app]);
+
+            mainContainer.on('pointerdown', (e) => {
+                s.sys.popup.clear();
+            });
+
+            this.openApp('sys.apps.dataBrowser');
+
+
+            //todo change sideBarWith not outliner
+            //const sideBar = new this.v({class: ['sideBar']})
+            //e('>', [sideBar, mainContainer]);
+
             //1. UI OUTLINER
-            const outliner = new (await s.f('sys.apps.GUI.outliner'));
-            this.outliner = outliner;
-            await outliner.init(localState, input);
-            e('>', [outliner.getV(), sideBar]);
+            //const outliner = new (await s.f('sys.apps.GUI.outliner'));
+            //this.outliner = outliner;
+            //await outliner.init(localState, input);
+            //e('>', [outliner.getV(), sideBar]);
 
             //2. UI RESIZER
-            this.resizer = new this.v({class: 'resizer'});
-            e('>', [this.resizer, mainContainer]);
-            e('>', [new this.v({class: 'left'}), this.resizer]);
-            e('>', [new this.v({class: 'center'}), this.resizer]);
-            this.resizerDragAndDrop();
+            //this.resizer = new this.v({class: 'resizer'});
+            //e('>', [this.resizer, mainContainer]);
+            //e('>', [new this.v({class: 'left'}), this.resizer]);
+            //e('>', [new this.v({class: 'center'}), this.resizer]);
+            //this.resizerDragAndDrop();
 
             //3. UI APPS MANAGER
-            const appsManager = new (await s.f('sys.apps.GUI.appsManager'));
-            await appsManager.init(localState);
-            e('>', [appsManager.getV(), mainContainer]);
+            //const appsManager = new (await s.f('sys.apps.GUI.appsManager'));
+            //await appsManager.init(localState);
+            //e('>', [appsManager.getV(), mainContainer]);
 
             //4. UI TERMINAL
-            const terminal = new (await s.f('sys.apps.GUI.terminal'))(localState, input);
-            e('>', [terminal.getV(), mainContainer]);
-            terminal.init();
+            //const terminal = new (await s.f('sys.apps.GUI.terminal'))(localState, input);
+            //e('>', [terminal.getV(), mainContainer]);
+            //terminal.init();
 
-            let outlinerWidth = Number(localState.getOutlinerWidth() ?? outliner.getWidth() + 100);
-            outliner.getV().setStyles({width: outlinerWidth + 'px'});
-            e('outlinerSizeChanged', outlinerWidth);
+            //let outlinerWidth = Number(localState.getOutlinerWidth() ?? outliner.getWidth() + 100);
+            //outliner.getV().setStyles({width: outlinerWidth + 'px'});
+            //e('outlinerSizeChanged', outlinerWidth);
 
-            mainContainer.on('pointerdown', () => s.sys.popup.clear());
+            //mainContainer.on('pointerdown', () => s.sys.popup.clear());
             input.onResize(e => s.e('recalcDimensions'));
 
             //localState.set('isTerminalShowed', '');
@@ -269,7 +276,52 @@ async () => {
             eventSource();
         }
 
+        openApp(appPath, dataNode) {
+
+            const appFrameProto = {
+
+                async init(appPath, dataNode, v, mainContainer) {
+
+                    this.view = new v({ class: 'appFrame' });
+                    e('>', [this.view, mainContainer]);
+                    this.view.setSizes(500, 500);
+                    this.view.on('click', (e) => {
+                        //focus this app;
+                        s.l(this);
+                    });
+
+                    const app = new (s.f(appPath));
+
+                    const topBar = new v({ class: ['appTopBar'] }); //dont need for mobile?
+                    e('>', [topBar, this.view]);
+                    const closeBtn = new v({ class: 'tabCloseBtn' });
+                    e('>', [closeBtn, topBar]);
+
+                    const header = new v({txt: app.getTitle(), class: 'appHeader'});
+                    e('>', [header, topBar]);
+
+                    closeBtn.on('click', () => {
+                        app.close();
+                        this.view.clear();
+                    });
+
+                    await app.init();
+                    e('>', [app.getV(), this.view]);
+                    //open iframe, if need run app in iframe or separate proc
+                }
+
+            }
+
+            const instance = Object.create(appFrameProto);
+            instance.init(appPath, dataNode, this.v, this.mainContainer);
+
+            //todo add to opened apps
+        }
+
         resizerDragAndDrop() {
+
+            return;
+
             let resizerSizes;
             let shift;
 

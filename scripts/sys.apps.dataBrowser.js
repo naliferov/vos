@@ -1,8 +1,10 @@
-async () => {
+() => {
 
-    return class Outliner {
+    return class dataBrowser {
 
         getV() { return this.v; }
+        getTitle() { return 'Data browser'; }
+
 
         async init(localState, input) {
             this.input = input;
@@ -12,30 +14,41 @@ async () => {
             const v = await s.f('sys.ui.view');
             this.v = new v({class: 'outliner'});
 
-            const header = new v({txt: 'Data Browser', class: 'outlinerHeader'});
-            e('>', [header, this.v]);
-
-            const OutlinerNode = await s.f('sys.apps.GUI.outlinerNode');
+            const OutlinerNode = await s.f('sys.apps.dataBrowser.node');
             this.outlinerNode = OutlinerNode;
             const DataNode = await s.f('sys.apps.GUI.dataNode');
             this.node = DataNode;
 
-            const rootDataNode = new DataNode(s);
+            //create root
+            const dataNode = new DataNode(s);
             const rootOutlinerNode = new OutlinerNode;
-            await rootOutlinerNode.init(rootDataNode, true);
+            await rootOutlinerNode.init(dataNode, true, this);
             rootOutlinerNode.removeSubNodesShift();
             e('>', [rootOutlinerNode, this.v]);
 
-            s.e('outlinerNode.ui.add', {outlinerNode: rootOutlinerNode});
-
-            this.localState = localState;
-            this.openedPaths = this.localState.getOpenedPaths();
+            //this.localState = localState;
+            //this.openedPaths = this.localState.getOpenedPaths();
+            this.openedPaths = null;
             if (!this.openedPaths) this.openedPaths = {};
 
             //todo clear this.openedPaths which not exists in "s"
+            this.addNode(rootOutlinerNode);
             await rootOutlinerNode.open(this.openedPaths);
 
             this.buffer = null;
+        }
+
+        addNode(dataBrowserNode) {
+            this.nodes.set(dataBrowserNode.getId(), dataBrowserNode);
+        }
+
+         activate() {
+            this.v.show();
+            //const parent = this.v.parent();
+        }
+        deactivate() { this.v.hide(); }
+        close() {
+
         }
 
         setHeight(height) { this.getV().setStyles({height: height + 'px'}); }

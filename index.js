@@ -97,16 +97,17 @@
         })).json();
         s.merge(s.sys, sysState);
 
+        s.l(s.sys.apps);
+
         s.sys.proxyS = {};
         globalThis.s = new Proxy(s, s.sys.proxyS);
 
-        // const {userName} = await (await fetch('/authorizedUser')).json();
-        // s.sys.proxyF = {};
-        // s.def('f', new Proxy(s.f, s.sys.proxy));
-        // s.sys.proxy.apply = (target, thisArg, args) => { s.l('call', args); }
         (new (await s.f('sys.apps.GUI'))).start();
         return;
     }
+
+    //s.sys.apps.dataBrowser.node = s.sys.apps.GUI.outlinerNode;
+    //s.l(s.sys.apps.dataBrowser.node);
 
     s.def('process', (await import('node:process')).default);
     s.def('processStop', () => { s.l('stop process ', s.process.pid); s.process.exit(0); });
@@ -600,8 +601,7 @@
                 if (!node) return;
 
                 const tNode = typeof node;
-
-                console.log('updateFromFS', node.id, e.filename);
+                console.log('updateFromFS', e.filename);
                 const js = await s.nodeFS.readFile('scripts/' + e.filename, 'utf8');
                 if (js === node.js) {
                     console.log('js already updated');
@@ -619,7 +619,7 @@
         if (s.server) s.server.listen(8080, () => console.log(`httpServer start port: 8080`));
     }
     s.def('trigger', async () => await trigger());
-    if (s.once(2)) await trigger();
+    if (s.once(1)) await trigger();
     //s.processStop();
 
     if (sys.netNodesCheck && !sys.netNodesCheckIsActive) {

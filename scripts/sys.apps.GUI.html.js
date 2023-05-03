@@ -7,7 +7,7 @@ return `
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>radiator</title>
+    <title>ra</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✨</text></svg>">
     <style>
         :root {
@@ -95,15 +95,14 @@ return `
             color: hsl(var(--bc));
             font-family: Helvetica, Tahoma, Arial, sans-serif;
             font-size: 15px;
-            background: var(--bg-color);
-            overflow: hidden;
+            /* background: var(--bg-color); */
             -webkit-text-size-adjust: 100%;
         }
         #app {
-            overflow: hidden;
+
         }
         .mainContainer {
-            overflow: hidden;
+
         }
         /*#app { */
         /*    display: grid; */
@@ -143,17 +142,11 @@ return `
         }
 
         .outliner {
-            background: var(--bg-color);
-            overflow: scroll;
+            background: #ededed;
+            height: 100%;
             padding: 0 7px;
         }
         .outliner > .node > .nodeContainer > .openClose { display: none; }
-        .outlinerHeader {
-            line-height: 30px;
-            min-height: 30px;
-            font-weight: bold;
-            white-space: nowrap;
-        }
         .nodeContainer .quote { color: #AA1011; }
 
         .resizer {
@@ -173,8 +166,21 @@ return `
             background: var(--bg-color);
             overflow: scroll;
         }
-        .appContainer {
-            overflow: scroll;
+        .appFrame {
+            position: absolute;
+            top: 30px;
+        }
+        .appTopBar {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            padding: 5px 0;
+            background: lightgray;
+        }
+        .appHeader {
+            font-weight: bold;
+            white-space: nowrap;
+            margin-left: 5px;
         }
         .openClose {
             display: flex;
@@ -229,7 +235,7 @@ return `
             width: 0.8em;
             height: 0.8em;
             border-radius: 100px;
-            background: rgba(231, 150, 150, 0.99);
+            background: rgb(221 131 131 / 99%);
         }
         .terminal {
             position: fixed;
@@ -270,11 +276,8 @@ return `
             background: hsl(var(--b2, var(--b1)));
             overflow: scroll;
         }
-
         [contenteditable] {outline: 0; }
-        [contenteditable]:focus {
-            outline: 1px solid #c56565;
-        }
+        [contenteditable]:focus {}
 
         .shift { margin-left: calc( var(--shift) * 1 ); }
         .shift1 { margin-left: calc( var(--shift) * 1 ); }
@@ -350,10 +353,11 @@ return `
             justify-content: space-around;
             width: 21px;
             height: 19px;
-            margin: 7px 0 0 7px;
+           /* margin: 7px 0 0 7px; */
             border: none;
             background: transparent;
             cursor: pointer;
+            position: absolute;
         }
         .burger-line {
             width: 100%;
