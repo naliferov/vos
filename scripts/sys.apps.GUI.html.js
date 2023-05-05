@@ -1,6 +1,6 @@
 async () => {
 
-return `
+    return `
 
 <!DOCTYPE html>
 <html lang="en" data-theme="light">
@@ -351,17 +351,17 @@ return `
             display: flex;
             flex-direction: column;
             justify-content: space-around;
-            width: 21px;
-            height: 19px;
+            width: 20px;
+            height: 20px;
            /* margin: 7px 0 0 7px; */
             border: none;
             background: transparent;
             cursor: pointer;
             position: absolute;
+            background: black;
         }
         .burger-line {
-            width: 100%;
-            height: 3px;
+            /*height: 3px;*/
             background: #000;
         }
         .btnsBar {
@@ -369,8 +369,6 @@ return `
             align-items: center;
             background: #F3F3F3;
         }
-
-
         .rotate180 { transform: rotate(180deg); }
     </style>
 </head>
@@ -383,4 +381,4 @@ return `
 </html>
 `
 
-    }
+}

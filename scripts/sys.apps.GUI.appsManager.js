@@ -14,7 +14,6 @@ async () => {
             this.appsContainers = new Map;
             this.localState = localState;
 
-
             const DataNode = await s.f('sys.apps.GUI.dataNode');
 
             this.openedApps = this.localState.getOpenedApps();
@@ -32,7 +31,22 @@ async () => {
                 await this.openApp(appPath, dataNode, false);
             }
         }
-        getTabsHeight() { return this.tabs.getSizes().height; }
+        async inputEvent(t, e) {
+            //focused app;
+
+            if (this.focusedAppFrame) {
+                if (t === 'click') {
+                    this.focusedAppFrame.getApp().handleClick(e);
+                }
+            }
+            //s.l(t, e);
+
+            // input.onKeyDown(async (e) => await outliner.handleKeyDown(e));
+            // input.onKeyUp(async (e) => await outliner.handleKeyUp(e));
+            // input.onClick(async (e) => await outliner.handleClick(e));
+            // input.onDblClick(async (e) => await outliner.handleDblClick(e));
+            // input.onContextMenu(e => outliner.handleContextMenu(e));
+        }
 
         //getTabByContextNode(node) { return this.tabs.get(node.get('id')); }
         async openApp(appPath, dataNode, addToLocalState = true) {
@@ -71,32 +85,65 @@ async () => {
             }
         }
 
-        updateFocusedAppContainerDimensions() {
-            if (!this.focusedApp) return;
-            const {width, height} = e('getDimensionsForAppContainer');
-            this.focusedApp.setWidth(width);
-            this.focusedApp.setHeight(height);
+        async openApp2(appPath, dataNode, mainContainer) {
+
+            const focus = (appFrame) => this.focusAppFrame(appFrame);
+
+            const appFrameProto = {
+
+                getApp() { return this.app; },
+                async init(appPath, dataNode, v, mainContainer) {
+
+                    //todo add uuid
+                    this.view = new v({ class: 'appFrame' });
+                    e('>', [this.view, mainContainer]);
+                    this.view.setSizes(500, 500);
+                    this.view.on('click', (e) => focus(this));
+                    this.app = new (s.f(appPath));
+
+                    const topBar = new v({ class: ['appTopBar'] }); //dont need for mobile?
+                    e('>', [topBar, this.view]);
+                    const closeBtn = new v({ class: 'tabCloseBtn' });
+                    e('>', [closeBtn, topBar]);
+
+                    const header = new v({txt: this.app.getTitle(), class: 'appHeader'});
+                    e('>', [header, topBar]);
+
+                    closeBtn.on('click', () => {
+                        this.app.close(); this.view.clear();
+                        //focusedAppFrame check
+                    });
+
+                    await this.app.init();
+                    e('>', [this.app.getV(), this.view]);
+                    //open iframe, if need run app in iframe or separate proc
+                }
+            }
+
+            const v = await s.f('sys.ui.view');
+            const instance = Object.create(appFrameProto);
+            instance.init(appPath, dataNode, v, mainContainer);
+
+            //todo add to opened apps
         }
 
-        focusApp(appContainer) {
-
-            //const nodeId = node.get('id');
-            //const app = this.apps.get(appId);
-            //if (!appId) { console.log('tabId not found', nodeId); return; }
-
-            if (this.focusedApp) {
-                //todo
+        resize() {
+            //if (!this.focusedApp) return;
+            //const {width, height} = e('getDimensionsForAppContainer');
+            //this.focusedApp.setWidth(width);
+            //this.focusedApp.setHeight(height);
+        }
+        focusAppFrame(appFrame) {
+            if (this.focusedAppFrame) {
                 // if (this.activeTab.getContextNodeId() === tab.getContextNodeId()) {
                 //     return;
                 // }
-                this.focusedApp.deactivate();
+                //this.focusedApp.deactivate();
             }
-            this.focusedApp = appContainer;
-            appContainer.activate();
-
+            this.focusedAppFrame = appFrame;
+            //appFrame.activate();
             //this.localState.s(appContainer.getId());
         }
-
         closeApp(appContainer, tabIndex) {
 
             //const isActiveTab = this.activeTab && this.activeTab.getContextNodeId() === contextUnitId;

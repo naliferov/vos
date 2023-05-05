@@ -8,7 +8,7 @@ async () => {
 
             s.sys.eventHandlers = {};
 
-            globalThis.e = new Proxy(() => {}, {
+            globalThis.e = new Proxy(() => { }, {
                 apply(target, thisArg, args) {
                     const handler = args[0];
                     const data = args[1];
@@ -71,14 +71,14 @@ async () => {
             // }));
 
             const input = new (await s.f('sys.ui.input'));
-            //input.onKeyDown(async (e) => await outliner.handleKeyDown(e));
-            // input.onKeyUp(async (e) => await outliner.handleKeyUp(e));
-            // input.onClick(async (e) => await outliner.handleClick(e));
-            // input.onDblClick(async (e) => await outliner.handleDblClick(e));
-            // input.onContextMenu(e => outliner.handleContextMenu(e));
+            input.onKeyDown(e => appsManager.inputEvent('keydown', e));
+            input.onKeyUp(e => appsManager.inputEvent('keyup', e));
+            input.onClick(e => appsManager.inputEvent('click', e));
+            input.onDblClick(e => appsManager.inputEvent('dblclick', e));
+            input.onContextMenu(e => appsManager.inputEvent('contextmenu', e));
             this.input = input;
 
-            e['openNode'] = async ({appPath = 'apps.monacoEditor', outlinerNode}) => {
+            e['openNode'] = async ({ appPath = 'apps.monacoEditor', outlinerNode }) => {
                 const dataNode = outlinerNode.getDataNode();
                 dataNode.setPath(outlinerNode.getPath().join('.'));
 
@@ -110,7 +110,7 @@ async () => {
                     height: window.innerHeight - terminal.getHeight() - appsManager.getTabsHeight()
                 }
             };
-            e['state.update'] = async ({outlinerNode, dataNode, data}) => {
+            e['state.update'] = async ({ outlinerNode, dataNode, data }) => {
 
                 if (!dataNode) dataNode = outlinerNode.getDataNode();
                 dataNode.setData(data);
@@ -140,11 +140,11 @@ async () => {
                     }
                 }
             }
-            e['state.mv'] = async ({oldPath, newPath}) => {}
-            e['state.del'] = async ({outlinerNode, dataNode}) => {
+            e['state.mv'] = async ({ oldPath, newPath }) => { }
+            e['state.del'] = async ({ outlinerNode, dataNode }) => {
                 //todo case  for dataNode
                 const path = outlinerNode.getPath();
-                await this.http.post('/stateUpdate', {cmds: [{path, op: 'rm'}] });
+                await this.http.post('/stateUpdate', { cmds: [{ path, op: 'rm' }] });
 
                 const parentOutlinerNode = outlinerNode.getParent();
                 const parentDataNode = parentOutlinerNode.getDataNode();
@@ -152,12 +152,6 @@ async () => {
 
                 if (parentDataNode.isEmpty()) parentOutlinerNode.openCloseBtnHide();
                 outlinerNode.remove();
-            }
-            s.e['outlinerNode.ui.add'] = ({outlinerNode}) => {
-                this.outliner.nodes.set(outlinerNode.getId(), outlinerNode);
-            }
-            s.e['outlinerNode.ui.remove'] = id => {
-                this.outliner.nodes.delete(id);
             }
             s.e['outlinerNode.find'] = id => {
                 const node = this.outliner.nodes.get(id);
@@ -167,6 +161,12 @@ async () => {
                 return node;
             }
             e['app.addViewElement'] = v => e('>', [v, app]);
+            e['localState.set'] = d => {
+                let [k, v] = d;
+                if (!k || typeof v === 'object') return;
+                localState.set(k, v);
+            }
+            e['localState.get'] = k => localState.get(k);
 
             const localState = new (await s.f('sys.apps.GUI.localState'));
 
@@ -175,9 +175,9 @@ async () => {
             app.setDOM(document.getElementById('app'));
 
 
-            const runBtn = new this.v({class: 'burger-btn'});
+            const runBtn = new this.v({ class: 'burger-btn' });
             e('>', [runBtn, app]);
-            [1,1,1].forEach(() => e('>', [new this.v({ class: 'burger-line' }), runBtn]));
+            [1, 1, 1].forEach(() => e('>', [new this.v({ class: 'burger-line' }), runBtn]));
 
             runBtn.on('pointerdown', (e) => {
                 e.stopPropagation();
@@ -196,8 +196,9 @@ async () => {
                 //oBtn.on('pointerenter', removeSubmenu);
                 window.e('>', [oBtn, popup]);
 
-                oBtn = createBtn('Data Browser');
+                oBtn = createBtn('Data browser');
                 oBtn.on('click', () => {
+                    appsManager.openApp2('sys.apps.dataBrowser', null, this.mainContainer);
                     popup.clear();
                 });
                 //oBtn.on('pointerenter', removeSubmenu);
@@ -206,7 +207,7 @@ async () => {
                 popup.putRightTo(runBtn);
             });
 
-            const mainContainer = new this.v({class: ['mainContainer']});
+            const mainContainer = new this.v({ class: ['mainContainer'] });
             this.mainContainer = mainContainer;
             e('>', [mainContainer, app]);
             s.sys.popup = new (await s.f('sys.apps.GUI.popup'));
@@ -216,49 +217,17 @@ async () => {
                 s.sys.popup.clear();
             });
 
-            this.openApp('sys.apps.dataBrowser');
+            const appsManager = new (await s.f('sys.apps.GUI.appsManager'));
+            await appsManager.init(localState);
+            await appsManager.openApp2('sys.apps.dataBrowser', null, this.mainContainer);
 
-
-            //todo change sideBarWith not outliner
-            //const sideBar = new this.v({class: ['sideBar']})
-            //e('>', [sideBar, mainContainer]);
-
-            //1. UI OUTLINER
-            //const outliner = new (await s.f('sys.apps.GUI.outliner'));
-            //this.outliner = outliner;
-            //await outliner.init(localState, input);
-            //e('>', [outliner.getV(), sideBar]);
-
-            //2. UI RESIZER
-            //this.resizer = new this.v({class: 'resizer'});
-            //e('>', [this.resizer, mainContainer]);
-            //e('>', [new this.v({class: 'left'}), this.resizer]);
-            //e('>', [new this.v({class: 'center'}), this.resizer]);
-            //this.resizerDragAndDrop();
-
-            //3. UI APPS MANAGER
-            //const appsManager = new (await s.f('sys.apps.GUI.appsManager'));
-            //await appsManager.init(localState);
-            //e('>', [appsManager.getV(), mainContainer]);
-
-            //4. UI TERMINAL
-            //const terminal = new (await s.f('sys.apps.GUI.terminal'))(localState, input);
-            //e('>', [terminal.getV(), mainContainer]);
-            //terminal.init();
-
-            //let outlinerWidth = Number(localState.getOutlinerWidth() ?? outliner.getWidth() + 100);
-            //outliner.getV().setStyles({width: outlinerWidth + 'px'});
-            //e('outlinerSizeChanged', outlinerWidth);
-
-            //mainContainer.on('pointerdown', () => s.sys.popup.clear());
             input.onResize(e => s.e('recalcDimensions'));
 
             //localState.set('isTerminalShowed', '');
-            if (!localState.get('isTerminalShowed')) {
-                //terminal.hide();
-                //localState.set('isTerminalShowed', '');
-            }
-
+            //if (!localState.get('isTerminalShowed')) {
+            //terminal.hide();
+            //localState.set('isTerminalShowed', '');
+            //}
             const eventSource = () => {
                 const sse = new EventSource('/stream');
                 sse.onmessage = (event) => {
@@ -276,48 +245,6 @@ async () => {
             eventSource();
         }
 
-        openApp(appPath, dataNode) {
-
-            const appFrameProto = {
-
-                async init(appPath, dataNode, v, mainContainer) {
-
-                    this.view = new v({ class: 'appFrame' });
-                    e('>', [this.view, mainContainer]);
-                    this.view.setSizes(500, 500);
-                    this.view.on('click', (e) => {
-                        //focus this app;
-                        s.l(this);
-                    });
-
-                    const app = new (s.f(appPath));
-
-                    const topBar = new v({ class: ['appTopBar'] }); //dont need for mobile?
-                    e('>', [topBar, this.view]);
-                    const closeBtn = new v({ class: 'tabCloseBtn' });
-                    e('>', [closeBtn, topBar]);
-
-                    const header = new v({txt: app.getTitle(), class: 'appHeader'});
-                    e('>', [header, topBar]);
-
-                    closeBtn.on('click', () => {
-                        app.close();
-                        this.view.clear();
-                    });
-
-                    await app.init();
-                    e('>', [app.getV(), this.view]);
-                    //open iframe, if need run app in iframe or separate proc
-                }
-
-            }
-
-            const instance = Object.create(appFrameProto);
-            instance.init(appPath, dataNode, this.v, this.mainContainer);
-
-            //todo add to opened apps
-        }
-
         resizerDragAndDrop() {
 
             return;
@@ -333,7 +260,7 @@ async () => {
 
                 const oulinerWidth = mouseX - outlinerPadding - resizerSizes.width + shift;
 
-                this.outliner.getV().setStyles({width: oulinerWidth + 'px'});
+                this.outliner.getV().setStyles({ width: oulinerWidth + 'px' });
                 window.e('outlinerSizeChanged', oulinerWidth);
             }
             this.resizer.on('pointerdown', e => {

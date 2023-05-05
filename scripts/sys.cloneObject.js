@@ -1,5 +1,6 @@
 obj => {
 
+    //ok
     if (Array.isArray(obj)) {
         let array = [];
         for (let i = 0; i < obj.length; i++) {

@@ -1,5 +1,5 @@
 async (rq, rs) => {
-    let {token} = s.sys.rqGetCookies(rq);
+    let { token } = s.sys.rqGetCookies(rq);
     if (!token) {
         rs.writeHead(403).end('Access denied. userToken not found.');
         return;
@@ -65,10 +65,10 @@ async (rq, rs) => {
         if (!node || !k) { //todo return error instead of using rs
             rs.s(`node not found or path is invalid [${path}]`); return {};
         }
-        return {node, k};
+        return { node, k };
     }
     const updateNode = (path, v) => {
-        const {node, k} = getParentNodeAndKey(path);
+        const { node, k } = getParentNodeAndKey(path);
         if (!node || !k) return;
 
         //test();
@@ -81,7 +81,7 @@ async (rq, rs) => {
         node[k] = v;
     }
     const cp = (oldPath, newPath) => {
-        const {node, k} = getParentNodeAndKey(oldPath);
+        const { node, k } = getParentNodeAndKey(oldPath);
         if (!node || !k) {
             s.l(`No node or k. oldPath [${oldPath}]`)
             return;
@@ -94,21 +94,21 @@ async (rq, rs) => {
             return;
         }
         node2[k2] = node[k];
-        return {node, k};
+        return { node, k };
     }
     const rm = path => {
-        const {node, k} = getParentNodeAndKey(path);
+        const { node, k } = getParentNodeAndKey(path);
         if (!node || !k) return;
         delete node[k];
         if (k === 'js') delete node[s.sys.SYMBOL_FN];
     }
     const checkSpaceLimit = (path, v, op) => {
 
-        if (op === 'cp' ) {
+        if (op === 'cp') {
             //todo pass here oldPath, newPath
             //todo cp can make circular references, so need processing of circular references
         } else if (op === 'up') {
-            const {node, k} = getParentNodeAndKey(path);
+            const { node, k } = getParentNodeAndKey(path);
             if (!node || !k) return;
 
             const nodeClone = structuredClone(node);
@@ -121,7 +121,7 @@ async (rq, rs) => {
     }
 
     const isSysToken = s.sys.token === token;
-    const {users} = await s.sys.getSecrets();
+    const { users } = await s.sys.getSecrets();
     let userName = users[token];
 
     if (userName) await loadUserByUsername(userName);
@@ -131,7 +131,7 @@ async (rq, rs) => {
         return;
     }
 
-    const {cmds, updateId} = await s.sys.rqParseBody(rq);
+    const { cmds, updateId } = await s.sys.rqParseBody(rq);
     let batch = cmds;
 
     const updateIds = s.sys.netUpdateIds;
@@ -155,7 +155,7 @@ async (rq, rs) => {
             rs.s(`cmd is not valid ${update}.`);
             return;
         }
-        const {path, oldPath, newPath, v, op} = update;
+        const { path, oldPath, newPath, v, op } = update;
 
         //validate pathes, or oldPath, newPath
         let result = isSysToken;
@@ -185,14 +185,13 @@ async (rq, rs) => {
             await loadFromDisk(oldPath);
             await loadFromDisk(newPath);
         }
-
         if (!checkSpaceLimit(path, v, op)) {
             rs.writeHead(403).end(`Space limit reached.`);
             return;
         }
 
         //todo case with long arrays can be really slow, so need to make limits
-        //todo case if it not object, but MAP or SET
+        //todo case if it MAP or SET
         if (op === 'rm') {
             rm(path);
         } else if (op === 'cp') {
@@ -200,13 +199,10 @@ async (rq, rs) => {
             //cp(oldPath, newPath);
         } else if (op === 'mv') {
             //todo prevent mv of array keys
-            const {node, k} = cp(oldPath, newPath);
+            const { node, k } = cp(oldPath, newPath);
             delete node[k];
         } else if (op === 'set' || op === 'up') {
             updateNode(path, v);
-        } else if (op === 'merge') {
-            const node = s.find(path);
-            s.merge(node, v);
         }
 
         if (path) {
@@ -216,7 +212,6 @@ async (rq, rs) => {
             await saveToDisk(newPath);
         }
     }
-
     rs.s('ok');
     //await s.f('sys.netUpdate', {cmds, updateId}, token, true);
 }

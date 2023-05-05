@@ -13,14 +13,6 @@ async () => {
             if (str) return JSON.parse(str);
             return [];
         }
-        setOpenedPaths(openedPaths) {
-            localStorage.setItem('openedPaths', JSON.stringify(openedPaths));
-        }
-        getOpenedPaths() {
-            const str = localStorage.getItem('openedPaths');
-            if (str) return JSON.parse(str);
-            return {};
-        }
 
         setActiveTabId(tabId) { localStorage.setItem('activeTabId', tabId); }
         getActiveTabId() { return localStorage.getItem('activeTabId'); }
@@ -35,5 +27,5 @@ async () => {
         set(k, v) { localStorage.setItem(k, v); }
         del(k) { localStorage.removeItem(k); }
     }
-    
+
 }

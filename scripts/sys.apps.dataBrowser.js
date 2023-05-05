@@ -5,44 +5,44 @@
         getV() { return this.v; }
         getTitle() { return 'Data browser'; }
 
-
-        async init(localState, input) {
-            this.input = input;
+        async init() {
             this.http = new (await s.f('sys.httpClient'));
             this.nodes = new Map;
 
             const v = await s.f('sys.ui.view');
-            this.v = new v({class: 'outliner'});
+            this.v = new v({ class: 'outliner' });
 
-            const OutlinerNode = await s.f('sys.apps.dataBrowser.node');
-            this.outlinerNode = OutlinerNode;
             const DataNode = await s.f('sys.apps.GUI.dataNode');
             this.node = DataNode;
+            const DataBrowserNode = await s.f('sys.apps.dataBrowser.node');
+            this.outlinerNode = DataBrowserNode;
 
-            //create root
             const dataNode = new DataNode(s);
-            const rootOutlinerNode = new OutlinerNode;
-            await rootOutlinerNode.init(dataNode, true, this);
-            rootOutlinerNode.removeSubNodesShift();
-            e('>', [rootOutlinerNode, this.v]);
+            const node = new DataBrowserNode;
+            await node.init(dataNode, true, this);
+            node.removeSubNodesShift();
+            e('>', [node, this.v]);
 
-            //this.localState = localState;
-            //this.openedPaths = this.localState.getOpenedPaths();
-            this.openedPaths = null;
-            if (!this.openedPaths) this.openedPaths = {};
+            this.openedPaths = s.e('localState.get', 'openedPaths');
+            if (this.openedPaths) {
+                this.openedPaths = JSON.parse(this.openedPaths);
+            } else {
+                this.openedPaths = {};
+            }
 
             //todo clear this.openedPaths which not exists in "s"
-            this.addNode(rootOutlinerNode);
-            await rootOutlinerNode.open(this.openedPaths);
+            this.addNode(node);
+            await node.open(this.openedPaths);
 
             this.buffer = null;
         }
-
         addNode(dataBrowserNode) {
             this.nodes.set(dataBrowserNode.getId(), dataBrowserNode);
         }
-
-         activate() {
+        removeNode(id) {
+            this.nodes.delete(id);
+        }
+        activate() {
             this.v.show();
             //const parent = this.v.parent();
         }
@@ -51,7 +51,7 @@
 
         }
 
-        setHeight(height) { this.getV().setStyles({height: height + 'px'}); }
+        setHeight(height) { this.getV().setStyles({ height: height + 'px' }); }
         //todo put outliner content in container without padding and remove this shit
         getWidth() { return this.getV().getSizes().width; }
         getHorizontalPadding() {
@@ -84,7 +84,7 @@
             setTimeout(() => newOutlinerNode.focus(), 100);
 
             newDataNode.setPath(newOutlinerNode.getPath());
-            s.e('state.update', {dataNode: newDataNode, data: v});
+            s.e('state.update', { dataNode: newDataNode, data: v });
         }
 
         async handleKeyDown(e) {
@@ -114,8 +114,8 @@
                 window.e('>after', [outlinerNode.getV(), outlinerNode.next().getV()]);
             } */else if (ctrl && k === 'v') {
                 //setTimeout(() => {
-                    //outlinerNode.updateNameInContextNode();
-                    //this.save();
+                //outlinerNode.updateNameInContextNode();
+                //this.save();
                 //}, 200);
                 return;
             } else {
@@ -140,7 +140,7 @@
 
             if (newK.length === 0) {
                 if (!confirm('Delete object?')) return;
-                s.e('state.del', {outlinerNode})
+                s.e('state.del', { outlinerNode })
                 return;
             }
 
@@ -150,7 +150,7 @@
 
             if (newKPath.toString() === oldKPath.toString()) return;
 
-            await this.http.post('/stateUpdate', { cmds: [{newPath: newKPath, oldPath: oldKPath, op: 'mv'}] });
+            await this.http.post('/stateUpdate', { cmds: [{ newPath: newKPath, oldPath: oldKPath, op: 'mv' }] });
             const parentDataNode = outlinerNode.getParent().getDataNode();
 
             parentDataNode.set(newKPath.at(-1), v);
@@ -160,17 +160,18 @@
         }
 
         async handleClick(e) {
+
             const addOpenedNode = node => {
                 //todo some func to direct iteration in depth of object by path
                 let lastObj = this.openedPaths;
                 const path = node.getPath();
 
                 for (let i = 0; i < path.length; i++) {
-                    const pathPart = path[i];
-                    if (!lastObj[pathPart]) lastObj[pathPart] = {};
-                    lastObj = lastObj[pathPart];
+                    const part = path[i];
+                    if (!lastObj[part]) lastObj[part] = {};
+                    lastObj = lastObj[part];
                 }
-                this.localState.setOpenedPaths(this.openedPaths);
+                s.e('localState.set', ['openedPaths', JSON.stringify(this.openedPaths)]);
             }
             const deleteOpenedNode = node => {
 
@@ -188,7 +189,7 @@
                     lastObj = lastObj[part];
                     lastPart = part;
                 }
-                this.localState.setOpenedPaths(this.openedPaths);
+                s.e('localState.set', ['openedPaths', JSON.stringify(this.openedPaths)]);
             }
             const classList = e.target.classList;
 
@@ -265,7 +266,7 @@
                     if (name === 'GUI') continue;
                     let appBtn = createBtn(name);
                     appBtn.on('click', () => {
-                        window.e('openNode', {appPath: `sys.apps.${name}`, outlinerNode});
+                        window.e('openNode', { appPath: `sys.apps.${name}`, outlinerNode });
                         popup.clear();
                     });
                     window.e('>', [appBtn, submenu]);
@@ -292,7 +293,7 @@
                             data[k] = v;
                             const dataNode = new this.node;
                             dataNode.setPath([...outlinerNode.getPath(), k]);
-                            s.e('state.update', {dataNode, data: v});
+                            s.e('state.update', { dataNode, data: v });
                             break;
                         }
                     }
@@ -305,7 +306,7 @@
 
             oBtn = createBtn('Copy');
             oBtn.on('click', () => {
-                this.buffer = {mode: 'copy', outlinerNode};
+                this.buffer = { mode: 'copy', outlinerNode };
                 popup.clear();
             });
             oBtn.on('pointerenter', removeSubmenu);
@@ -313,7 +314,7 @@
 
             oBtn = createBtn('Cut');
             oBtn.on('click', () => {
-                this.buffer = {mode: 'cut', outlinerNode};
+                this.buffer = { mode: 'cut', outlinerNode };
                 popup.clear();
             });
             oBtn.on('pointerenter', removeSubmenu);
@@ -335,9 +336,9 @@
                     dataNodeCopy.setPath([...outlinerNode.getPath(), dataPath.at(-1)]);
 
                     const data = structuredClone(bufOurlinerNode.getDataNode().getData());
-                    s.e('state.update', {dataNode: dataNodeCopy, data});
+                    s.e('state.update', { dataNode: dataNodeCopy, data });
                     if (this.buffer.mode === 'cut') {
-                        await s.e('state.del', {outlinerNode: bufOurlinerNode});
+                        await s.e('state.del', { outlinerNode: bufOurlinerNode });
                     }
 
                     this.buffer = null;
@@ -388,7 +389,7 @@
                         if (type === 'Object') data = {};
                         if (type === 'String') data = 'str';
                         if (data === undefined) return;
-                        s.e('state.update', {outlinerNode, data});
+                        s.e('state.update', { outlinerNode, data });
 
                         outlinerNode.getParent().reopen();
                         popup.clear();
@@ -401,7 +402,7 @@
             window.e('>', [oBtn, popup]);
 
             popup.onClear(() => removeSubmenu());
-            popup.putRightToPointer({x: e.clientX, y: e.clientY});
+            popup.putRightToPointer({ x: e.clientX, y: e.clientY });
         }
 
     }

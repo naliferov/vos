@@ -13,13 +13,13 @@
     Object.defineProperty(s, 'def', {
         writable: true, configurable: true, enumerable: false,
         value: (k, v) => {
-            Object.defineProperty(s, k, {writable: true, configurable: true, enumerable: false, value: v});
+            Object.defineProperty(s, k, { writable: true, configurable: true, enumerable: false, value: v });
         }
     });
     Object.defineProperty(s, 'defObjectProp', {
         writable: true, configurable: true, enumerable: false,
         value: (o, k, v) => {
-            Object.defineProperty(o, k, {writable: true, configurable: true, enumerable: false, value: v});
+            Object.defineProperty(o, k, { writable: true, configurable: true, enumerable: false, value: v });
         }
     });
     s.def('l', console.log);
@@ -28,7 +28,7 @@
         const node = s.findByArray(Array.isArray(id) ? id : id.split('.'));
         if (!node) return;
         //if (typeof node === 'object') {
-            //return node[s.sys.SYMBOL_FN];
+        //return node[s.sys.SYMBOL_FN];
         //}
     });
     s.def('findByArray', id => {
@@ -47,6 +47,19 @@
             parent: id.length === 1 ? s : s.find(id.slice(0, -1)),
             k: id.at(-1)
         };
+    });
+    s.def('makePath', id => {
+        const path = Array.isArray(id) ? id : id.split('.');
+        let node = s;
+
+        for (let i = 0; i < path.length; i++) {
+            const k = path[i];
+            if (typeof node[k] !== 'object' || node[k] === null) {
+                node[k] = {};
+            }
+            node = node[k];
+        }
+        return node;
     });
     s.def('f', (id, ...args) => {
         try {
@@ -92,12 +105,10 @@
     if (typeof window !== 'undefined') {
         const sysState = await (await fetch('/state', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({path: ['sys']}),
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path: ['sys'] }),
         })).json();
         s.merge(s.sys, sysState);
-
-        s.l(s.sys.apps);
 
         s.sys.proxyS = {};
         globalThis.s = new Proxy(s, s.sys.proxyS);
@@ -127,7 +138,7 @@
             file: 'index.js',
             delay: 2000,
             isWorking: false,
-            start: async function() {
+            start: async function () {
                 this.isWorking = true;
                 while (1) {
                     await new Promise(r => setTimeout(r, this.delay));
@@ -140,7 +151,7 @@
                     catch (e) { console.log(e); }
                 }
             },
-            stop: function() {
+            stop: function () {
                 this.isWorking = false;
             },
         });
@@ -173,7 +184,7 @@
             const t = typeof v;
 
             if (t === 'function') {
-                dump[k] = {js: v.toString()};
+                dump[k] = { js: v.toString() };
             } else if (t === 'boolean' || t === 'string' || t === 'number') {
                 dump[k] = v;
             } else if (t === 'object') {
@@ -183,17 +194,12 @@
                     dump[k] = s.createObjectDump(v, path + '.' + k);
                 }
             }
-            else if (t === 'symbol' || t === 'undefined') {}
+            else if (t === 'symbol' || t === 'undefined') { }
             else {
                 s.l('unknown object type', path, t, v);
             }
         }
         return dump;
-    });
-    s.def('createPathDump', path => {
-        const object = s.find(path);
-        if (!object) return;
-        return s.createObjectDump(object);
     });
     s.def('dumpStateToDisc', () => {
         if (s.dumping) return;
@@ -211,6 +217,19 @@
             s.l('>> dump created');
             s.dumping = 0;
         }, 1000));
+    });
+    s.def('copyToDisc', async (path, v) => {
+
+        let pathArr = path;
+        if (!Array.isArray(pathArr)) {
+            pathArr = pathArr.split('.');
+        }
+        const dir = `state/${pathArr.slice(0, -1).join('/')}`;
+        const file = `${dir}/${pathArr.at(-1)}.json`;
+
+        if (await s.fsAccess(dir)) {
+            await s.nodeFS.writeFile(file, JSON.stringify(v));
+        }
     });
     s.def('syncJsScripts', async (node, path) => {
 
@@ -241,15 +260,10 @@
             const node = s.find(id);
             if (!node) {
                 s.l('delete', id);
-               //await s.nodeFS.unlink();
+                //await s.nodeFS.unlink();
             }
         }
     });
-    s.sys.stateUpdateFull = async state => {
-        for (let k in s) if (!state[k]) delete s[k];
-        s.merge(s, state);
-        s.l('setUpdate', 'setForUpdate: ', Object.keys(state).length);
-    }
     s.sys.stateUpdatePath = (path, state) => {
         const currentState = s.find(path);
         for (let k in currentState) {
@@ -272,7 +286,7 @@
                 len += chunk.length;
                 if (len > limit) {
                     rq.destroy();
-                    resolve({err: `limit reached [${limitMb}mb]`});
+                    resolve({ err: `limit reached [${limitMb}mb]` });
                     return;
                 }
                 b.push(chunk);
@@ -283,7 +297,7 @@
 
                 if (rq.headers['content-type'] === 'application/json') {
                     try { b = JSON.parse(b.toString()); }
-                    catch (e) { b = {err: 'json parse error'}; }
+                    catch (e) { b = { err: 'json parse error' }; }
                 }
                 resolve(b);
             });
@@ -306,14 +320,14 @@
         const extension = split[split.length - 1]; if (!extension) return;
         try {
             const file = await s.nodeFS.readFile('.' + rq.pathname);
-            const m = {html: 'text/html', js: 'text/javascript', css: 'text/css', map: 'application/json', woff2: 'font/woff2', woff: 'font/woff', ttf: 'font/ttf'};
+            const m = { html: 'text/html', js: 'text/javascript', css: 'text/css', map: 'application/json', woff2: 'font/woff2', woff: 'font/woff', ttf: 'font/ttf' };
             if (m[extension]) rs.setHeader('Content-Type', m[extension]);
 
             //rs.setHeader('Access-Control-Allow-Origin', '*');
             rs.end(file);
             return true;
         } catch (e) {
-            if (s.log) s.log.info(e.toString(), {path: e.path, syscall: e.syscall});
+            if (s.log) s.log.info(e.toString(), { path: e.path, syscall: e.syscall });
             else console.log(e);
             return false;
         }
@@ -343,7 +357,7 @@
         return result;
     }
     s.sys.rqAuthenticate = (rq) => {
-        let {token} = s.sys.rqGetCookies(rq);
+        let { token } = s.sys.rqGetCookies(rq);
         return token && s.sys.token && token === s.sys.token;
     }
 
@@ -364,7 +378,7 @@
             rs.writeHead(403).end('denied secrets.json'); return;
         }
         rs.s = (v, contentType) => {
-            const s = (value, type) => rs.writeHead(200, {'Content-Type': type}).end(value);
+            const s = (value, type) => rs.writeHead(200, { 'Content-Type': type }).end(value);
 
             if (!v) s('empty val', 'text/plain; charset=utf-8');
             else if (v instanceof Buffer) s(v, '');
@@ -379,7 +393,7 @@
                     rs.writeHead(403).end('denied');
                     return;
                 }
-                const {cmd} = await s.sys.rqParseBody(rq);
+                const { cmd } = await s.sys.rqParseBody(rq);
                 if (cmd) {
                     try { eval(cmd); }
                     catch (e) { console.log(e); }
@@ -395,7 +409,7 @@
 
                 s.log.info('SSE connected');
                 s.connectedSSERequests.set(rqId, rs);
-                rs.writeHead(200, {'Content-Type': 'text/event-stream', 'Connection': 'keep-alive', 'Cache-Control': 'no-cache'});
+                rs.writeHead(200, { 'Content-Type': 'text/event-stream', 'Connection': 'keep-alive', 'Cache-Control': 'no-cache' });
 
                 rq.on('close', () => {
                     s.connectedSSERequests.delete(rqId);
@@ -403,19 +417,19 @@
                 });
                 rq.isLongRequest = true;
             },
-            'GET:/module.js': async () => {
-                const {id} = sys.rqParseQuery(rq);
-                if (!id) {
-                    rs.writeHead(400).end('id is invalid.'); return;
-                }
-                const obj = s.find(id);
-                if (obj && obj.js) {
-                    rs.setHeader('Content-Type', 'text/javascript');
-                    rs.end('export default ' + obj.js);
-                }
-            },
+            // 'GET:/module.js': async () => {
+            //     const { id } = sys.rqParseQuery(rq);
+            //     if (!id) {
+            //         rs.writeHead(400).end('id is invalid.'); return;
+            //     }
+            //     const obj = s.find(id);
+            //     if (obj && obj.js) {
+            //         rs.setHeader('Content-Type', 'text/javascript');
+            //         rs.end('export default ' + obj.js);
+            //     }
+            // },
             'POST:/state': async () => {
-                const {path} = await s.sys.rqParseBody(rq);
+                const { path } = await s.sys.rqParseBody(rq);
                 if (!Array.isArray(path)) {
                     rs.writeHead(403).end('Path is invalid.'); return;
                 }
@@ -424,13 +438,11 @@
                         rs.writeHead(403).end('Access denied.'); return;
                     }
                 }
-
                 let node = s.find(path);
-                const pathStr = 'state/' + path.join('/');
 
-                //todo get path info will be better
                 if (typeof node === 'object' && !Array.isArray(node) && Object.keys(node).length < 1) {
 
+                    const pathStr = 'state/' + path.join('/');
                     if (await s.fsAccess(pathStr)) {
                         const list = await s.nodeFS.readdir(pathStr);
                         for (let i = 0; i < list.length; i++) {
@@ -441,11 +453,12 @@
                         }
 
                     } else if (await s.fsAccess(pathStr + '.json')) {
-                        const {parent, k} = s.findParentAndK(path);
+                        const { parent, k } = s.findParentAndK(path);
                         node = JSON.parse(await s.nodeFS.readFile(pathStr + '.json', 'utf8'));
                         if (parent && k) parent[k] = node;
                     }
                 }
+                //todo get path info will be better for performance
                 //todo level of depth of object or array
                 rs.s(node);
             },
@@ -455,23 +468,43 @@
                 }
                 await s.f('sys.rqStateUpdate', rq, rs);
             },
-            'POST:/sysUpdate': async () => {
+            //convert to merge with ability to create not exists path
+            // 'POST:/sysUpdate': async () => {
+            //     if (!s.sys.rqAuthenticate(rq)) {
+            //         rs.writeHead(403).end('denied');
+            //         return;
+            //     }
+            //     const { sys } = await s.sys.rqParseBody(rq);
+            //     s.merge(s.sys, sys);
+            //     rs.s('ok');
+            // },
+            'POST:/merge': async () => {
                 if (!s.sys.rqAuthenticate(rq)) {
                     rs.writeHead(403).end('denied');
                     return;
                 }
-                const {sys} = await s.sys.rqParseBody(rq);
-                s.merge(s.sys, sys);
+                const { path, v } = await s.sys.rqParseBody(rq);
+                let node = s.find(path);
+                if (!node) node = s.makePath(path);
+
+                if (typeof v !== 'object' || v === null) {
+                    rs.writeHead(400).end('v is not object');
+                    return;
+                }
+
+                //todo ability to merge even distributed data
+                s.merge(node, v);
+                await s.copyToDisc(path, node);
                 rs.s('ok');
             },
             'POST:/sign/in': async () => {
                 //todo add rate limit
-                const {token} = await s.sys.rqParseBody(rq);
+                const { token } = await s.sys.rqParseBody(rq);
                 if (!token || typeof token !== 'string') {
                     rs.writeHead(400).end('Token is invalid.');
                     return;
                 }
-                const {users} = await s.sys.getSecrets();
+                const { users } = await s.sys.getSecrets();
                 if (!users[token]) {
                     rs.writeHead(404).end('User not found.');
                     return;
@@ -551,7 +584,7 @@
         const logger = new (await s.f('sys.logger'));
         logger.mute();
         logger.onMessage(msg => {
-            const json = JSON.stringify({logMsg: msg});
+            const json = JSON.stringify({ logMsg: msg });
             for (let [k, v] of s.connectedSSERequests) {
                 v.write(`data: ${json}\n\n`);
             }
@@ -621,6 +654,12 @@
     s.def('trigger', async () => await trigger());
     if (s.once(1)) await trigger();
     //s.processStop();
+
+    //sys.apps.terminal = sys.apps.GUI.terminal;
+
+    if (s.sys.netId === 'do') {
+        //delete s.users['денчик'];
+    }
 
     if (sys.netNodesCheck && !sys.netNodesCheckIsActive) {
         //todo setTimeout for dispose connections and set sys.netNodesCheckIsActive to zero

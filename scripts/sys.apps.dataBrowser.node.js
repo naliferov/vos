@@ -8,13 +8,13 @@ async () => {
             this.domId = s.f('sys.uuid');
 
             const v = await s.f('sys.ui.view');
-            this.v = new v({id: this.domId, class: ['node']});
+            this.v = new v({ id: this.domId, class: ['node'] });
             this.isOpened = false;
             this.isRoot = isRoot;
 
             if (!this.isRoot) await this.createDataFields(dataNode);
 
-            this.subNodesV = new v({class: ['subNodes', 'shift']});
+            this.subNodesV = new v({ class: ['subNodes', 'shift'] });
             e('>', [this.subNodesV, this.v]);
         }
         getId() { return this.domId; }
@@ -22,29 +22,29 @@ async () => {
         async createDataFields(dataNode) {
             const data = dataNode.getData();
             let dType = dataNode.getDataType();
-            let dTypeLabel = {boolean: 'bool', function: 'f', number: 'num',  object: ''}[dType] ?? dType;
+            let dTypeLabel = { boolean: 'bool', function: 'f', number: 'num', object: '' }[dType] ?? dType;
             if (data === null) dTypeLabel = 'null';
             else if (data === undefined) dTypeLabel = 'undefined';
 
             const v = await s.f('sys.ui.view');
-            const container = new v({class: ['nodeContainer', 'flex']}); e('>', [container, this.v]);
+            const container = new v({ class: ['nodeContainer', 'flex'] }); e('>', [container, this.v]);
 
-            this.openClose = new v({class: 'openClose'});
+            this.openClose = new v({ class: 'openClose' });
             this.openClose.setAttr('outliner_node_id', this.domId);
             e('>', [this.openClose, container]);
 
-            const openCloseArrow = new v({class: 'openCloseArrow'});
+            const openCloseArrow = new v({ class: 'openCloseArrow' });
             openCloseArrow.setAttr('outliner_node_id', this.domId);
             e('>', [openCloseArrow, this.openClose]);
             if (!this.hasSomethingToOpen()) this.openCloseBtnHide();
 
-            this.keyV = new v({class: 'dataKey', txt: dataNode.getKey()});
+            this.keyV = new v({ class: 'dataKey', txt: dataNode.getKey() });
             this.keyV.setAttr('outliner_node_id', this.domId);
             this.keyV.toggleEdit();
             e('>', [this.keyV, container]);
 
             if (!s.f('sys.isObject', data) && !Array.isArray(data)) {
-                e('>', [new v({class: 'sep', txt: ':', style: {marginRight: '5px'}}), container]);
+                e('>', [new v({ class: 'sep', txt: ':', style: { marginRight: '5px' } }), container]);
             }
 
             let slicedStrInfo;
@@ -52,13 +52,13 @@ async () => {
             const createValueV = (txt, className, color) => {
                 if (txt === false) txt = 'false';
 
-                return new v({txt, class: className, style: {color: color, whiteSpace: 'nowrap'}});
+                return new v({ txt, class: className, style: { color: color, whiteSpace: 'nowrap' } });
             }
 
             let valueV;
 
             if (dType === 'boolean') {
-                valueV = createValueV(data, 'dataValue',  'blue');
+                valueV = createValueV(data, 'dataValue', 'blue');
                 valueV.iEditMod();
             } else if (dType === 'number') {
                 valueV = createValueV(data, 'dataValue', '#221199');
@@ -75,7 +75,7 @@ async () => {
                 }
                 valueV = createValueV(str, ['dataValue', 'string'], '#AA1011');
                 if (isSliced) {
-                    slicedStrInfo = new v({txt: 'and more ' + (data.length - limit) + ' chars', style: {marginLeft: '5px', 'white-space': 'nowrap'}});
+                    slicedStrInfo = new v({ txt: 'and more ' + (data.length - limit) + ' chars', style: { marginLeft: '5px', 'white-space': 'nowrap' } });
                 } else {
                     valueV.iEditMod();
                 }
@@ -87,9 +87,9 @@ async () => {
             valueV.on('keyup', async () => this.netUpdate());
 
 
-            if (dType === 'string') e('>', [new v({class: 'quote', txt: "'"}), container]);
+            if (dType === 'string') e('>', [new v({ class: 'quote', txt: "'" }), container]);
             e('>', [valueV, container]);
-            if (dType === 'string') e('>', [new v({class: 'quote', txt: "'"}), container]);
+            if (dType === 'string') e('>', [new v({ class: 'quote', txt: "'" }), container]);
 
             if (slicedStrInfo) e('>', [slicedStrInfo, container]);
             if (opsBtn) e('>', [opsBtn, container]);
@@ -101,19 +101,19 @@ async () => {
             const v = this.valueV.getTxt();
             if (!v) {
                 if (confirm('Delete prop?')) {
-                    s.e('state.del', {outlinerNode: this});
+                    s.e('state.del', { outlinerNode: this });
                 }
                 return;
             }
             if (v === this.getDataNode().getData()) return;
 
-            s.e('state.update', {outlinerNode: this, data: v});
+            s.e('state.update', { outlinerNode: this, data: v });
         }
         getDomId() { return this.domId }
 
         async requestData() {
             const http = new (await s.f('sys.httpClient'));
-            const {data} = await http.post('/state', {path: this.getPath()});
+            const { data } = await http.post('/state', { path: this.getPath() });
             if (data) {
                 this.dataNode.setData(data);
                 const parentNode = s.find(this.getPath().slice(0, -1));
@@ -166,9 +166,10 @@ async () => {
                     nameNode[kLower].push({ k, node: v[k] });
                 }
                 const sortedKeys = Object.keys(nameNode).sort();
+
                 for (let i = 0; i < sortedKeys.length; i++) {
 
-                    const nodes = nameNode[ sortedKeys[i] ];
+                    const nodes = nameNode[sortedKeys[i]];
                     for (let j = 0; j < nodes.length; j++) {
                         await renderNode(nodes[j].k, nodes[j].node);
                     }
@@ -184,7 +185,7 @@ async () => {
             for (let i = 0; i < children.length; i++) {
                 const id = children[i].id;
                 if (!id) throw Error('no outliner_node_id on ' + children[i]);
-                s.e('outlinerNode.ui.remove', id);
+                this.dataBrowser.removeNode(id);
             }
             nodesV.clear();
             this.isOpened = false;
@@ -215,7 +216,7 @@ async () => {
 
             const v = await s.f('sys.ui.view');
 
-            const createBtn = txt => new v({txt, class: 'btn'});
+            const createBtn = txt => new v({ txt, class: 'btn' });
 
             let oBtn = createBtn('Add');
             oBtn.on('click', async () => {
@@ -249,7 +250,11 @@ async () => {
         //isEmpty() { return !this.dataNodesV.getDOM().children.length }
         isInRoot() { return this.getParent().isRoot }
         getParent() {
-            return s.e('outlinerNode.find', this.v.parentDOM().parentNode.id);
+            const node = this.dataBrowser.nodes.get(this.v.parentDOM().parentNode.id);
+            if (!node) {
+                // s.l(id, this.outliner.nodes);
+            }
+            return node;
         }
         getPath() {
             let path = [];

@@ -63,7 +63,7 @@ async () => {
             }
         }
 
-        const {NodeSSH} = await import('node-ssh');
+        const { NodeSSH } = await import('node-ssh');
         for (let nodeName in s.net) {
 
             const node = s.net[nodeName];
@@ -78,11 +78,12 @@ async () => {
                 await node.ssh.connect({
                     host: node.ip,
                     username: node.username,
-                    privateKey: sshKey});
+                    privateKey: sshKey
+                });
             }
             await checkForNecessaryFiles(node);
 
-            const {netNodes} = await s.sys.getSecrets();
+            const { netNodes } = await s.sys.getSecrets();
             const token = netNodes[nodeName];
             const curl = async (port, path, data) => {
                 let cmd = `curl -X POST http://127.0.0.1:${port}${path} -d '${JSON.stringify(data)}'`;
@@ -96,27 +97,36 @@ async () => {
             //const r = await curl(8080, '/cmd', {cmd: "s.l(s.sys.netId, 'test')"}); s.l(r);
             //state update
 
-            //await node.ssh.putFile('index.js', `./index.js`); s.l('index.js uploaded')
             //todo sync users and spaces
             const users = ['vlada', 'llanosrocas']; //'llanosrocas'
             for (let i = 0; i < users.length; i++) {
                 continue;
 
                 const userName = users[i];
-                const {data} = await node.http.post('/state', {path: ['users', userName]});
+                const { data } = await node.http.post('/state', { path: ['users', userName] });
 
                 if (s.users[userName]) s.merge(s.users[userName], data);
                 else s.users[userName] = data;
                 await s.nodeFS.writeFile(`state/users/${userName}.json`, JSON.stringify(s.users[userName]));
             }
 
-            const sendSys = async () => {
-                const {netNodes} = await s.sys.getSecrets();
-                const r = await node.http.post('/sysUpdate', {sys: s.sys}, {cookie: `token=${netNodes[nodeName]}`});
+            const mergePath = async (path) => {
+                const { netNodes } = await s.sys.getSecrets();
+
+                const v = s.find(path);
+                if (!v) return;
+
+                const r = await node.http.post('/merge', { path, v }, { cookie: `token=${netNodes[nodeName]}` });
                 console.log(r.data);
             }
-            //sendSys();
-            //const r = await curl(80, '/cmd', {cmd: "delete s.sys.rqStateUpdate[s.sys.SYMBOL_FN]"}, netNodes[nodeName]); s.l(r);
+            //await node.ssh.putFile('index.js', `./index.js`); s.l('index.js uploaded')
+
+            //mergePath('sys');
+            //mergePath('users.димас');
+
+            //const r = await curl(80, '/cmd', { cmd: "delete s.sys.rqStateUpdate[s.sys.SYMBOL_FN]" }, netNodes[nodeName]); s.l(r);
+            //const r = await curl(80, '/cmd', { cmd: "delete sys.apps.GUI.html[s.sys.SYMBOL_FN]" }, netNodes[nodeName]); s.l(r);
+
         }
     }
 }
