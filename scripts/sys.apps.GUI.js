@@ -78,6 +78,16 @@ async () => {
             input.onContextMenu(e => appsManager.inputEvent('contextmenu', e));
             this.input = input;
 
+            e['app.addViewElement'] = v => e('>', [v, app]);
+            e['appFrame.changePosition'] = ({ appFrame, x, y }) => {
+                appsManager.appFrameChangePosition(appFrame, x, y);
+            };
+            e['appFrame.changeSize'] = ({ appFrame, width, height }) => {
+                appsManager.appFrameChangeSize(appFrame, width, height);
+            };
+            //s.e('appFrame.changePosition', { x, y })
+
+
             e['openNode'] = async ({ appPath = 'apps.monacoEditor', outlinerNode }) => {
                 const dataNode = outlinerNode.getDataNode();
                 dataNode.setPath(outlinerNode.getPath().join('.'));
@@ -92,6 +102,11 @@ async () => {
                 const appContainerWidth = window.innerWidth - outlinerWidth.width;
                 appsManager.setWidth(appContainerWidth);
             }
+            e['input.pointer.setHandlers'] = ({ down, move, up }) => {
+                this.input.onPointerMove(move);
+                this.input.onPointerUp(up);
+            }
+
             e['terminalSizeChanged'] = () => {
                 s.e('recalcDimensions');
             }
@@ -160,7 +175,6 @@ async () => {
                 }
                 return node;
             }
-            e['app.addViewElement'] = v => e('>', [v, app]);
             e['localState.set'] = d => {
                 let [k, v] = d;
                 if (!k || typeof v === 'object') return;
@@ -198,29 +212,30 @@ async () => {
 
                 oBtn = createBtn('Data browser');
                 oBtn.on('click', () => {
-                    appsManager.openApp2('sys.apps.dataBrowser', null, this.mainContainer);
+                    appsManager.openApp('sys.apps.dataBrowser', null, true);
                     popup.clear();
                 });
                 //oBtn.on('pointerenter', removeSubmenu);
                 window.e('>', [oBtn, popup]);
 
+                oBtn = createBtn('Terminal');
+                oBtn.on('click', () => {
+                    //appsManager.openApp('sys.apps.dataBrowser', null, true);
+                    //popup.clear();
+                });
+                window.e('>', [oBtn, popup]);
+
                 popup.putRightTo(runBtn);
             });
 
+            //todo rename this to appContainer and create it inside appsManager
             const mainContainer = new this.v({ class: ['mainContainer'] });
+            mainContainer.on('pointerdown', (e) => s.sys.popup.clear());
             this.mainContainer = mainContainer;
             e('>', [mainContainer, app]);
-            s.sys.popup = new (await s.f('sys.apps.GUI.popup'));
-            e('>', [s.sys.popup, app]);
-
-            mainContainer.on('pointerdown', (e) => {
-                s.sys.popup.clear();
-            });
 
             const appsManager = new (await s.f('sys.apps.GUI.appsManager'));
-            await appsManager.init(localState);
-            await appsManager.openApp2('sys.apps.dataBrowser', null, this.mainContainer);
-
+            await appsManager.init(mainContainer);
             input.onResize(e => s.e('recalcDimensions'));
 
             //localState.set('isTerminalShowed', '');
@@ -228,6 +243,10 @@ async () => {
             //terminal.hide();
             //localState.set('isTerminalShowed', '');
             //}
+
+            s.sys.popup = new (await s.f('sys.apps.GUI.popup'));
+            e('>', [s.sys.popup, app]);
+
             const eventSource = () => {
                 const sse = new EventSource('/stream');
                 sse.onmessage = (event) => {
@@ -243,39 +262,6 @@ async () => {
                 sse.onerror = (e) => console.log('An error occurred while attempting to connect.', e);
             }
             eventSource();
-        }
-
-        resizerDragAndDrop() {
-
-            return;
-
-            let resizerSizes;
-            let shift;
-
-            const outlinerPadding = this.outliner.getHorizontalPadding();
-
-            const move = e => {
-                const mouseX = e.clientX;
-                if (mouseX < 20 || mouseX > (window.innerWidth - 20)) return;
-
-                const oulinerWidth = mouseX - outlinerPadding - resizerSizes.width + shift;
-
-                this.outliner.getV().setStyles({ width: oulinerWidth + 'px' });
-                window.e('outlinerSizeChanged', oulinerWidth);
-            }
-            this.resizer.on('pointerdown', e => {
-                s.sys.popup.clear();
-
-                e.preventDefault();
-                resizerSizes = this.resizer.getSizes();
-                shift = (resizerSizes.x + resizerSizes.width) - e.clientX;
-
-                this.input.onMouseMove(move);
-                this.input.onMouseUp(() => {
-                    this.input.onMouseUp(null);
-                    this.input.onMouseMove(null);
-                });
-            });
         }
     }
 }

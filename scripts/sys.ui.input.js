@@ -11,14 +11,15 @@ async () => {
             this.win.onresize = null;
             this.win.oncontextmenu = null;
         }
+        //onpointerup
         onKeyDown(fn) { this.win.onkeydown = fn; }
         onKeyUp(fn) { this.win.onkeyup = fn; }
         onClick(fn) { this.win.onclick = fn; }
         onDblClick(fn) { this.win.ondblclick = fn; }
-        onMouseMove(fn) { this.win.onpointermove = fn; }
-        onMouseUp(fn) { this.win.onpointerup = fn; }
+        onPointerMove(fn) { this.win.onpointermove = fn; }
+        onPointerUp(fn) { this.win.onpointerup = fn; }
         onResize(f) { this.win.onresize = f; }
         onContextMenu(f) { this.win.oncontextmenu = f; }
     }
-    
+
 }

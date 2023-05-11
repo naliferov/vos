@@ -9,7 +9,7 @@ async (rq, limitMb = 12) => {
                 len += chunk.length;
                 if (len > limit) {
                     rq.destroy();
-                    resolve({err: `limit reached [${limitMb}mb]`});
+                    resolve({ err: `limit reached [${limitMb}mb]` });
                     return;
                 }
                 b.push(chunk);
@@ -20,7 +20,7 @@ async (rq, limitMb = 12) => {
 
                 if (rq.headers['content-type'] === 'application/json') {
                     try { b = JSON.parse(b.toString()); }
-                    catch (e) { b = {err: 'json parse error'}; }
+                    catch (e) { b = { err: 'json parse error' }; }
                 }
                 resolve(b);
             });

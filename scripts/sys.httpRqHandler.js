@@ -15,7 +15,7 @@ async (rq, rs) => {
             rs.writeHead(403).end('denied secrets.json'); return;
         }
         rs.s = (v, contentType) => {
-            const s = (value, type) => rs.writeHead(200, {'Content-Type': type}).end(value);
+            const s = (value, type) => rs.writeHead(200, { 'Content-Type': type }).end(value);
 
             if (!v) s('empty val', 'text/plain; charset=utf-8');
             else if (v instanceof Buffer) s(v, '');
@@ -30,7 +30,7 @@ async (rq, rs) => {
                     rs.writeHead(403).end('denied');
                     return;
                 }
-                const {cmd} = await s.sys.rqParseBody(rq);
+                const { cmd } = await s.sys.rqParseBody(rq);
                 if (cmd) {
                     try { eval(cmd); }
                     catch (e) { console.log(e); }
@@ -46,7 +46,7 @@ async (rq, rs) => {
 
                 s.log.info('SSE connected');
                 s.connectedSSERequests.set(rqId, rs);
-                rs.writeHead(200, {'Content-Type': 'text/event-stream', 'Connection': 'keep-alive', 'Cache-Control': 'no-cache'});
+                rs.writeHead(200, { 'Content-Type': 'text/event-stream', 'Connection': 'keep-alive', 'Cache-Control': 'no-cache' });
 
                 rq.on('close', () => {
                     s.connectedSSERequests.delete(rqId);
@@ -54,19 +54,19 @@ async (rq, rs) => {
                 });
                 rq.isLongRequest = true;
             },
-            'GET:/module.js': async () => {
-                const {id} = sys.rqParseQuery(rq);
-                if (!id) {
-                    rs.writeHead(400).end('id is invalid.'); return;
-                }
-                const obj = s.find(id);
-                if (obj && obj.js) {
-                    rs.setHeader('Content-Type', 'text/javascript');
-                    rs.end('export default ' + obj.js);
-                }
-            },
+            // 'GET:/module.js': async () => {
+            //     const { id } = sys.rqParseQuery(rq);
+            //     if (!id) {
+            //         rs.writeHead(400).end('id is invalid.'); return;
+            //     }
+            //     const obj = s.find(id);
+            //     if (obj && obj.js) {
+            //         rs.setHeader('Content-Type', 'text/javascript');
+            //         rs.end('export default ' + obj.js);
+            //     }
+            // },
             'POST:/state': async () => {
-                const {path} = await s.sys.rqParseBody(rq);
+                const { path } = await s.sys.rqParseBody(rq);
                 if (!Array.isArray(path)) {
                     rs.writeHead(403).end('Path is invalid.'); return;
                 }
@@ -75,13 +75,11 @@ async (rq, rs) => {
                         rs.writeHead(403).end('Access denied.'); return;
                     }
                 }
-
                 let node = s.find(path);
-                const pathStr = 'state/' + path.join('/');
 
-                //todo get path info will be better
                 if (typeof node === 'object' && !Array.isArray(node) && Object.keys(node).length < 1) {
 
+                    const pathStr = 'state/' + path.join('/');
                     if (await s.fsAccess(pathStr)) {
                         const list = await s.nodeFS.readdir(pathStr);
                         for (let i = 0; i < list.length; i++) {
@@ -92,11 +90,12 @@ async (rq, rs) => {
                         }
 
                     } else if (await s.fsAccess(pathStr + '.json')) {
-                        const {parent, k} = s.findParentAndK(path);
+                        const { parent, k } = s.findParentAndK(path);
                         node = JSON.parse(await s.nodeFS.readFile(pathStr + '.json', 'utf8'));
                         if (parent && k) parent[k] = node;
                     }
                 }
+                //todo get path info will be better for performance
                 //todo level of depth of object or array
                 rs.s(node);
             },
@@ -106,23 +105,42 @@ async (rq, rs) => {
                 }
                 await s.f('sys.rqStateUpdate', rq, rs);
             },
-            'POST:/sysUpdate': async () => {
+            //convert to merge with ability to create not exists path
+            // 'POST:/sysUpdate': async () => {
+            //     if (!s.sys.rqAuthenticate(rq)) {
+            //         rs.writeHead(403).end('denied');
+            //         return;
+            //     }
+            //     const { sys } = await s.sys.rqParseBody(rq);
+            //     s.merge(s.sys, sys);
+            //     rs.s('ok');
+            // },
+            'POST:/merge': async () => {
                 if (!s.sys.rqAuthenticate(rq)) {
                     rs.writeHead(403).end('denied');
                     return;
                 }
-                const {sys} = await s.sys.rqParseBody(rq);
-                s.merge(s.sys, sys);
+                const { path, v } = await s.sys.rqParseBody(rq);
+                let node = s.find(path);
+                if (!node) node = s.makePath(path);
+
+                if (typeof v !== 'object' || v === null) {
+                    rs.writeHead(400).end('v is not object');
+                    return;
+                }
+                //todo ability to merge even distributed data
+                s.merge(node, v);
+                await s.copyToDisc(path, node);
                 rs.s('ok');
             },
             'POST:/sign/in': async () => {
                 //todo add rate limit
-                const {token} = await s.sys.rqParseBody(rq);
+                const { token } = await s.sys.rqParseBody(rq);
                 if (!token || typeof token !== 'string') {
                     rs.writeHead(400).end('Token is invalid.');
                     return;
                 }
-                const {users} = await s.sys.getSecrets();
+                const { users } = await s.sys.getSecrets();
                 if (!users[token]) {
                     rs.writeHead(404).end('User not found.');
                     return;

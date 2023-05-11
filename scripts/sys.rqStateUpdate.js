@@ -213,5 +213,5 @@ async (rq, rs) => {
         }
     }
     rs.s('ok');
-    //await s.f('sys.netUpdate', {cmds, updateId}, token, true);
+    await s.f('sys.netUpdate', { cmds, updateId }, token, true);
 }

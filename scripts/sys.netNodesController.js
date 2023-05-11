@@ -1,8 +1,6 @@
 async () => {
 
-    return async netId => {
-
-        if (netId !== 'aliferovMac') return;
+    return async () => {
 
         const nodeVer = '19.6.0';
         const nodeFName = `node${nodeVer}.tar.xz`
@@ -21,6 +19,8 @@ async () => {
             s.l(`extract node ${nodeFName}`);
             await os.ex(`tar -xf ${nodeFName}`);
         }
+
+        //delete s.users['алексей'];
 
         const listenLog = async () => {
             //l.onMessage((msg) => connectedSSErs ? connectedSSErs.write(`data: ${msg} \n\n`) : '');
@@ -44,16 +44,17 @@ async () => {
         const checkForNecessaryFiles = async (node) => {
             let ls = (await node.ssh.execCommand('ls')).stdout.split('\n');
             if (!ls.includes('node')) {
-                s.l('upload nodejs');
+                s.l('Upload nodejs.');
                 await node.ssh.putFile(`${nodeExtractedDir}/bin/node`, `./node`);
                 await node.ssh.execCommand('chmod +x node');
-                s.l('nodejs uploaded');
+                s.l('Nodejs uploaded.');
             }
             if (!ls.includes('node_modules')) {
-                s.l('upload node_modules');
+                s.l('Upload node_modules.');
                 await deliverDir(node.ssh, 'node_modules');
-                s.l('node_modules uploaded');
+                s.l('Node_modules uploaded.');
             }
+            //todo create other dirs
             if (!ls.includes('state')) await node.ssh.execCommand('mkdir state');
 
             ls = (await node.ssh.execCommand('ls state')).stdout.split('\n');
@@ -61,6 +62,8 @@ async () => {
                 s.l('upload secrets.json');
                 await node.ssh.putFile('state/secrets.json', `./state/secrets.json`);
             }
+
+            //await node.ssh.putFile('state/secrets.json', `./state/secrets.json`); s.l('secrets');
         }
 
         const { NodeSSH } = await import('node-ssh');
@@ -122,7 +125,7 @@ async () => {
             //await node.ssh.putFile('index.js', `./index.js`); s.l('index.js uploaded')
 
             //mergePath('sys');
-            //mergePath('users.димас');
+            //mergePath('users.dynamic');
 
             //const r = await curl(80, '/cmd', { cmd: "delete s.sys.rqStateUpdate[s.sys.SYMBOL_FN]" }, netNodes[nodeName]); s.l(r);
             //const r = await curl(80, '/cmd', { cmd: "delete sys.apps.GUI.html[s.sys.SYMBOL_FN]" }, netNodes[nodeName]); s.l(r);

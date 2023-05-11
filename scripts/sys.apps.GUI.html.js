@@ -140,13 +140,13 @@ async () => {
             height: 0.8em;
             background: rgba(18,199,5,0.99);
         }
-
-        .outliner {
+        .dataBrowser {
             background: #ededed;
-            height: 100%;
             padding: 0 7px;
+            height: 100%;
+            overflow: scroll;
         }
-        .outliner > .node > .nodeContainer > .openClose { display: none; }
+        .dataBrowser > .node > .nodeContainer > .openClose { display: none; }
         .nodeContainer .quote { color: #AA1011; }
 
         .resizer {
@@ -162,13 +162,18 @@ async () => {
             width: 1px;
             height: 100%;
         }
-        .appsManager {
-            background: var(--bg-color);
-            overflow: scroll;
-        }
         .appFrame {
             position: absolute;
             top: 30px;
+            box-shadow: 0 2px 4px 0 rgba(0,0,0,0.2);
+        }
+        .appFrame.drag {
+          -webkit-touch-callout: none; /* iOS Safari */
+            -webkit-user-select: none;   /* Chrome/Safari/Opera */
+            -khtml-user-select: none;    /* Konqueror */
+            -moz-user-select: none;      /* Firefox */
+            -ms-user-select: none;       /* Internet Explorer/Edge*/
+            user-select: none;
         }
         .appTopBar {
             width: 100%;
@@ -176,12 +181,58 @@ async () => {
             align-items: center;
             padding: 5px 0;
             background: lightgray;
+            cursor: pointer;
+            box-shadow: 0 2px 4px 0 rgba(0,0,0,0.2);
         }
-        .appHeader {
+        .appFrame.drag .appTopBar {
+            cursor: move;
+        }
+        .appTitle {
             font-weight: bold;
             white-space: nowrap;
             margin-left: 5px;
         }
+        .appContent {
+            overflow: scroll;
+        }
+        .resizeTop {
+            position: absolute;
+            min-width: 1em;
+            min-height: 1em;
+            left: 0.5em;
+            right: 0.5em;
+            top: -0.5em;
+            cursor: ns-resize;
+        }
+        .resizeBottom {
+            position: absolute;
+            min-width: 1em;
+            min-height: 1em;
+            left: 0.5em;
+            right: 0.5em;
+            bottom: -0.5em;
+            cursor: ns-resize;
+        }
+        .resizeLeft {
+            position: absolute;
+            min-width: 1em;
+            min-height: 1em;
+            top: 0.5em;
+            bottom: 0.5em;
+            left: -0.5em;
+            cursor: ew-resize;
+        }
+        .resizeRight {
+            position: absolute;
+            min-width: 1em;
+            min-height: 1em;
+            top: 0.5em;
+            bottom: 0.5em;
+            right: -0.5em;
+            cursor: ew-resize;
+        }
+
+
         .openClose {
             display: flex;
             align-items: center;
@@ -352,16 +403,14 @@ async () => {
             flex-direction: column;
             justify-content: space-around;
             width: 20px;
-            height: 20px;
-           /* margin: 7px 0 0 7px; */
+            height: 19px;
+            margin: 3px 0 0 0;
             border: none;
-            background: transparent;
             cursor: pointer;
             position: absolute;
-            background: black;
         }
         .burger-line {
-            /*height: 3px;*/
+            height: 3px;
             background: #000;
         }
         .btnsBar {

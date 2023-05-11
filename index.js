@@ -1,10 +1,6 @@
 (async () => {
     globalThis.s ??= {};
-
-    if (!s.net) s.net = {};
-    if (!s.space) s.space = {};
-    if (!s.sys) s.sys = {};
-    if (!s.users) s.users = {};
+    s.net ??= {}; s.space ??= {}; s.sys ??= {}; s.users ??= {};
     const sys = s.sys;
 
     if (!s.sys.SYMBOL_FN) s.sys.SYMBOL_FN = Symbol('fn');
@@ -24,13 +20,6 @@
     });
     s.def('l', console.log);
     s.def('find', id => s.findByArray(Array.isArray(id) ? id : id.split('.')));
-    s.def('findFN', id => {
-        const node = s.findByArray(Array.isArray(id) ? id : id.split('.'));
-        if (!node) return;
-        //if (typeof node === 'object') {
-        //return node[s.sys.SYMBOL_FN];
-        //}
-    });
     s.def('findByArray', id => {
         let node = s;
         for (let i = 0; i < id.length; i++) {
@@ -175,7 +164,7 @@
         return false;
     });
 
-    s.def('createObjectDump', (object, path = '') => {
+    s.def('serialize', (object, path = '') => {
         const dump = {};
         for (let k in object) {
             if (k === 'undefined') continue;
@@ -201,24 +190,7 @@
         }
         return dump;
     });
-    s.def('dumpStateToDisc', () => {
-        if (s.dumping) return;
-        s.def('dumping', setTimeout(async () => {
-            s.l('<< memory dump', new Date);
-
-            const dump = async path => {
-                const dump = s.createPathDump(path);
-                if (Object.keys(dump).length < 1) return;
-                await s.nodeFS.writeFile(`state/${path}.json`, JSON.stringify(dump));
-            }
-            const paths = ['net', 'sys'];
-            for (let i = 0; i < paths.length; i++) await dump(paths[i]);
-            //secrets.json
-            s.l('>> dump created');
-            s.dumping = 0;
-        }, 1000));
-    });
-    s.def('copyToDisc', async (path, v) => {
+    s.def('copyToDisc', async (path, v = null) => {
 
         let pathArr = path;
         if (!Array.isArray(pathArr)) {
@@ -228,8 +200,21 @@
         const file = `${dir}/${pathArr.at(-1)}.json`;
 
         if (await s.fsAccess(dir)) {
+            if (!v) v = s.find(pathArr);
             await s.nodeFS.writeFile(file, JSON.stringify(v));
         }
+    });
+    s.def('copyStateToDisc', () => {
+        if (s.dumping) return;
+        s.def('dumping', setTimeout(async () => {
+            s.l('<< memory dump', new Date);
+
+            const paths = ['sys']; //'net',
+            for (let i = 0; i < paths.length; i++) await s.copyToDisc(paths[i]);
+            //secrets.json
+            s.l('>> dump created');
+            s.dumping = 0;
+        }, 1000));
     });
     s.def('syncJsScripts', async (node, path) => {
 
@@ -491,7 +476,6 @@
                     rs.writeHead(400).end('v is not object');
                     return;
                 }
-
                 //todo ability to merge even distributed data
                 s.merge(node, v);
                 await s.copyToDisc(path, node);
@@ -645,7 +629,7 @@
                     if (tNode === 'object') node.js = js;
                     delete node[s.sys.SYMBOL_FN];
 
-                    s.dumpStateToDisc();
+                    s.copyStateToDisc();
                 } catch (e) { s.log.error(e.toString(), e.stack); }
             }
         }
@@ -655,22 +639,19 @@
     if (s.once(1)) await trigger();
     //s.processStop();
 
-    //sys.apps.terminal = sys.apps.GUI.terminal;
+    if (sys.netNodesController && !sys.netNodesCheckIsActive) {
 
-    if (s.sys.netId === 'do') {
-        //delete s.users['денчик'];
-    }
-
-    if (sys.netNodesCheck && !sys.netNodesCheckIsActive) {
         //todo setTimeout for dispose connections and set sys.netNodesCheckIsActive to zero
+        //for prevent use such crutch there should be ability to run long local tasks (loops)
+        if (!s.sys.netId) return;
+        if (s.sys.netId !== 'aliferovMac') return;
 
-        const netNodesCheck = await s.f('sys.netNodesCheck');
+        const netNodesController = await s.f('sys.netNodesController');
         s.defObjectProp(s.sys, 'netNodesCheckIsActive', 1);
 
-        try { await netNodesCheck(s.sys.netId); }
+        try { await netNodesController(s.sys.netId); }
         catch (e) { s.l(e); }
         sys.netNodesCheckIsActive = 0;
-
         //dispose connections after timeout
     }
 })();

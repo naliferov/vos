@@ -3,7 +3,7 @@
 
         constructor() {
             const v = s.f('sys.ui.view');
-            this.v = new v({class: 'popup'});
+            this.v = new v({ class: 'popup' });
         }
         clear() {
             this.v.clear();
@@ -22,11 +22,11 @@
 
         putRightTo(v) {
             const sizes = v.getSizesAbsolute();
-            this.v.setStyles({top: sizes.top + 'px', left: sizes.right + 'px'});
+            this.v.setStyles({ top: sizes.top + 'px', left: sizes.right + 'px' });
         }
         putRightToPointer(pointer) {
             //todo scroll?
-            this.v.setStyles({left: pointer.x + 8 + 'px', top: pointer.y + 'px'});
+            this.v.setStyles({ left: pointer.x + 8 + 'px', top: pointer.y + 'px' });
         }
         getV() { return this.v; }
     }

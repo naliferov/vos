@@ -52,7 +52,7 @@ async () => {
             const createValueV = (txt, className, color) => {
                 if (txt === false) txt = 'false';
 
-                return new v({ txt, class: className, style: { color: color, whiteSpace: 'nowrap' } });
+                return new v({ txt, class: className, style: { color: color } }); //whiteSpace: 'nowrap'
             }
 
             let valueV;
@@ -140,7 +140,7 @@ async () => {
             v = this.dataNode.getData();
 
             const NodeClass = await s.f('sys.apps.GUI.dataNode');
-            const OutlinerNodeClass = await s.f('sys.apps.GUI.outlinerNode');
+            const OutlinerNodeClass = await s.f('sys.apps.dataBrowser.node');
 
             const renderNode = async (k, node) => {
                 const dataNode = new NodeClass(node);

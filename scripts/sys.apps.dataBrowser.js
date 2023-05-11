@@ -4,13 +4,12 @@
 
         getV() { return this.v; }
         getTitle() { return 'Data browser'; }
-
         async init() {
             this.http = new (await s.f('sys.httpClient'));
             this.nodes = new Map;
 
             const v = await s.f('sys.ui.view');
-            this.v = new v({ class: 'outliner' });
+            this.v = new v({ class: 'dataBrowser' });
 
             const DataNode = await s.f('sys.apps.GUI.dataNode');
             this.node = DataNode;

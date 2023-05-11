@@ -71,10 +71,8 @@
             this.data.style.left = newX;
             dom.style.left = newX;
         }
-        setCoords(x = 0, y = 0) {
-
+        setPosition(x = 0, y = 0) {
             if (!this.data.style) this.data.style = {};
-
             if (x) {
                 this.data.style.left = x + 'px';
                 this.dom.style.left = x + 'px';
@@ -84,11 +82,12 @@
                 this.dom.style.top = y + 'px';
             }
         }
-        setSizes(width, height) {
-            if (width) this.dom.style.width = width + 'px';
-            if (height) this.dom.style.height = height + 'px';
+        setSize(width, height) {
+            if (width) this.getDOM().style.width = width + 'px';
+            if (height) this.getDOM().style.height = height + 'px';
         }
         getSizes() { return this.dom.getBoundingClientRect() }
+        size() { return this.getSizes() }
         getSizesAbsolute() {
             let sizes = this.dom.getBoundingClientRect();
             let scrollX = window.scrollX;
@@ -158,14 +157,9 @@
             v.setDOM(this.getDOM().parentNode);
             return v;
         }
-
         getDOMIndex() {
             const parent = this.parentDOM();
             return Array.prototype.indexOf.call(parent.children, this.getDOM());
-        }
-
-        getDomIndex() {
-            return Array.prototype.indexOf.call(parent.children, child);
         }
 
         scrollDown() {
