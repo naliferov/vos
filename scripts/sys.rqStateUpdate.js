@@ -1,12 +1,10 @@
 async (rq, rs) => {
     let { token } = s.sys.rqGetCookies(rq);
     if (!token) {
-        rs.writeHead(403).end('Access denied. userToken not found.');
-        return;
+        rs.writeHead(403).end('Access denied. userToken not found.'); return;
     }
     if (!s.sys.token) {
-        rs.writeHead(500).end('sys.token is not defined.');
-        return;
+        rs.writeHead(500).end('sys.token is not defined.'); return;
     }
 
     const loadFromDisk = async path => {
@@ -71,8 +69,6 @@ async (rq, rs) => {
         const { node, k } = getParentNodeAndKey(path);
         if (!node || !k) return;
 
-        //test();
-
         //todo check operation for Array
         if (k === 'js') {
             eval(v); //use parser or lister for check syntax
@@ -132,10 +128,8 @@ async (rq, rs) => {
     }
 
     const { cmds, updateId } = await s.sys.rqParseBody(rq);
-    let batch = cmds;
 
-    const updateIds = s.sys.netUpdateIds;
-    if (updateId && updateIds.get(updateId)) {
+    if (updateId && s.sys.netUpdateIds.get(updateId)) {
         s.l(`Update already received before. [${updateId}]`);
         return;
     }
@@ -145,12 +139,8 @@ async (rq, rs) => {
     }
 
     const user = s.users[userName];
-    if (user && !user._sys_) user._sys_ = {};
-    //for (let i in user) if (user[i] === undefined) delete user[i];
 
-    for (let i = 0; i < batch.length; i++) {
-
-        const update = batch[i];
+    const processCmd = async (update) => {
         if (!s.f('sys.isObject', update)) {
             rs.s(`cmd is not valid ${update}.`);
             return;
@@ -158,6 +148,7 @@ async (rq, rs) => {
         const { path, oldPath, newPath, v, op } = update;
 
         //validate pathes, or oldPath, newPath
+
         let result = isSysToken;
         if (!result) {
             if (oldPath && newPath) {
@@ -177,7 +168,6 @@ async (rq, rs) => {
             return;
         }
 
-        //todo validate path, oldPath, newPath
         //todo get path from disc if exists. check size of memory
         if (path) {
             //await loadFromDisk(path);
@@ -189,7 +179,6 @@ async (rq, rs) => {
             rs.writeHead(403).end(`Space limit reached.`);
             return;
         }
-
         //todo case with long arrays can be really slow, so need to make limits
         //todo case if it MAP or SET
         if (op === 'rm') {
@@ -208,9 +197,15 @@ async (rq, rs) => {
         if (path) {
             await saveToDisk(path);
         } else if (newPath && oldPath) {
-            //await saveToDisk(oldPath);
+            //await saveToDisk(oldPath); //todo if second and third is different it's transfer from different users or spaces
             await saveToDisk(newPath);
         }
+        return true;
+    }
+
+    for (let i = 0; i < cmds.length; i++) {
+        const result = await processCmd(cmds[i]);
+        if (result !== true) return;
     }
     rs.s('ok');
     await s.f('sys.netUpdate', { cmds, updateId }, token, true);

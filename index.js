@@ -3,20 +3,16 @@
     s.net ??= {}; s.space ??= {}; s.sys ??= {}; s.users ??= {};
     const sys = s.sys;
 
-    if (!s.sys.SYMBOL_FN) s.sys.SYMBOL_FN = Symbol('fn');
-    if (!s.sys.SYMBOL_IS_EMPTY_NODE) s.sys.SYMBOL_IS_EMPTY_NODE = Symbol('isEmptyNode');
+    sys.SYMBOL_FN ??= Symbol('fn');
+    sys.SYMBOL_IS_EMPTY_NODE ??= Symbol('isEmptyNode');
 
     Object.defineProperty(s, 'def', {
         writable: true, configurable: true, enumerable: false,
-        value: (k, v) => {
-            Object.defineProperty(s, k, { writable: true, configurable: true, enumerable: false, value: v });
-        }
+        value: (k, v) => Object.defineProperty(s, k, { writable: true, configurable: true, enumerable: false, value: v })
     });
     Object.defineProperty(s, 'defObjectProp', {
         writable: true, configurable: true, enumerable: false,
-        value: (o, k, v) => {
-            Object.defineProperty(o, k, { writable: true, configurable: true, enumerable: false, value: v });
-        }
+        value: (o, k, v) => Object.defineProperty(o, k, { writable: true, configurable: true, enumerable: false, value: v })
     });
     s.def('l', console.log);
     s.def('find', id => s.findByArray(Array.isArray(id) ? id : id.split('.')));
@@ -106,9 +102,6 @@
         return;
     }
 
-    //s.sys.apps.dataBrowser.node = s.sys.apps.GUI.outlinerNode;
-    //s.l(s.sys.apps.dataBrowser.node);
-
     s.def('process', (await import('node:process')).default);
     s.def('processStop', () => { s.l('stop process ', s.process.pid); s.process.exit(0); });
     //todo process restart
@@ -119,7 +112,6 @@
         catch { return false; }
     });
     s.sys.getSecrets = async () => JSON.parse(await s.nodeFS.readFile('state/secrets.json', 'utf8'));
-    //intervals, promises, connections
 
     if (!sys.netUpdateIds) s.defObjectProp(sys, 'netUpdateIds', new Map);
     if (!s.loop) {
@@ -164,6 +156,7 @@
         return false;
     });
 
+    //todo add this to sys
     s.def('serialize', (object, path = '') => {
         const dump = {};
         for (let k in object) {
@@ -359,7 +352,7 @@
         if (rq.pathname.includes('..')) {
             rs.writeHead(403).end('Path include ".." denied.'); return;
         }
-        if (rq.url.toLowerCase().includes('secrets.json')) {
+        if (rq.pathname.toLowerCase().includes('secrets.json')) {
             rs.writeHead(403).end('denied secrets.json'); return;
         }
         rs.s = (v, contentType) => {

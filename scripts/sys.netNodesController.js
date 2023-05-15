@@ -101,7 +101,7 @@ async () => {
             //state update
 
             //todo sync users and spaces
-            const users = ['vlada', 'llanosrocas']; //'llanosrocas'
+            const users = ['aliferov']; //'llanosrocas'
             for (let i = 0; i < users.length; i++) {
                 continue;
 
@@ -110,7 +110,7 @@ async () => {
 
                 if (s.users[userName]) s.merge(s.users[userName], data);
                 else s.users[userName] = data;
-                await s.nodeFS.writeFile(`state/users/${userName}.json`, JSON.stringify(s.users[userName]));
+                //await s.nodeFS.writeFile(`state/users/${userName}.json`, JSON.stringify(s.users[userName]));
             }
 
             const mergePath = async (path) => {
@@ -124,8 +124,8 @@ async () => {
             }
             //await node.ssh.putFile('index.js', `./index.js`); s.l('index.js uploaded')
 
+            //mergePath('users.aliferov');
             //mergePath('sys');
-            //mergePath('users.dynamic');
 
             //const r = await curl(80, '/cmd', { cmd: "delete s.sys.rqStateUpdate[s.sys.SYMBOL_FN]" }, netNodes[nodeName]); s.l(r);
             //const r = await curl(80, '/cmd', { cmd: "delete sys.apps.GUI.html[s.sys.SYMBOL_FN]" }, netNodes[nodeName]); s.l(r);

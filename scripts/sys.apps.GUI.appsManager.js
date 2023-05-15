@@ -4,14 +4,19 @@
         async init(uiContainer) {
 
             this.uiContainer = uiContainer;
-            this.appsFrames = new Map;
-            this.appsOpened = {};
+            this.openedApps = [];
 
-            const appsOpened = s.e('localState.get', 'appsOpened');
-            if (appsOpened) this.appsOpened = JSON.parse(appsOpened);
+            let openedApps = s.e('localState.get', 'openedApps');
+            if (!openedApps) return;
+            openedApps = JSON.parse(openedApps);
 
-            for (let appPath in this.appsOpened) {
-                const { dataPath, position, size } = this.appsOpened[appPath];
+            if (!Array.isArray(openedApps)) {
+                openedApps = [];
+            }
+
+            for (let i = 0; i < openedApps.length; i++) {
+
+                const { appPath, dataPath, dimensions } = openedApps[i];
 
                 let dataNode;
                 if (dataPath) {
@@ -26,17 +31,22 @@
                     }
                 }
                 const appFrame = await this.openApp(appPath, dataNode, false);
-                if (position) appFrame.setPosition(position.x, position.y);
-                if (size) appFrame.setSize(size.width, size.height);
+                appFrame.setPosition(dimensions.x, dimensions.y);
+                appFrame.setSize(dimensions.width, dimensions.height);
                 appFrame.recalcDimensions();
             }
         }
         async inputEvent(t, e) {
-            if (this.focusedAppFrame) {
-                if (t === 'click') {
-                    this.focusedAppFrame.getApp().handleClick(e);
-                }
-            }
+
+            if (!this.focusedAppFrame) return;
+
+            const app = this.focusedAppFrame.getApp();
+
+            if (t === 'click') app.handleClick(e);
+            if (t === 'contextmenu') app.handleContextMenu(e);
+            if (t === 'keydown' && app.handleKeydown) app.handleKeydown(e);
+            if (t === 'keyup' && app.handleKeyup) app.handleKeyup(e);
+
             // input.onKeyDown(async (e) => await outliner.handleKeyDown(e));
             // input.onKeyUp(async (e) => await outliner.handleKeyUp(e));
             // input.onClick(async (e) => await outliner.handleClick(e));
@@ -46,54 +56,63 @@
 
         async appFrameChangePosition(appFrame, x, y) {
 
-            const appFrameData = this.appsOpened[appFrame.getAppPath()];
-            if (!appFrameData) return;
+            // const appFrameData = this.openedApps[appFrame.getIndex()];
 
-            appFrameData.position ??= {};
-            if (x) appFrameData.position.x = x;
-            if (y) appFrameData.position.y = y;
-            this.saveAppsOpened();
+            // if (x) appFrameData.dimensions.x = x;
+            // if (y) appFrameData.dimensions.y = y;
+            this.saveOpenedApps();
         }
         async appFrameChangeSize(appFrame, width, height) {
 
-            const appFrameData = this.appsOpened[appFrame.getAppPath()];
-            if (!appFrameData) return;
+            // const appFrameData = this.openedApps[appFrame.getIndex()];
 
-            appFrameData.size ??= {};
-            if (width) appFrameData.size.width = width;
-            if (height) appFrameData.size.height = height;
-            this.saveAppsOpened();
+            // if (width) appFrameData.dimensions.width = width;
+            // if (height) appFrameData.dimensions.height = height;
+            this.saveOpenedApps();
         }
 
         async openApp(appPath, dataNode, addToLocalState) {
 
             const v = await s.f('sys.ui.view');
             //this can be cached with subscription on change, change protos in real time
+
             const appFrame = Object.create(s.f('sys.apps.GUI.appFrame'));
             await appFrame.init(appPath, dataNode, v);
+            appFrame.setIndex(this.openedApps.length);
+
             e('>', [appFrame.getView(), this.uiContainer]);
 
             appFrame.getView().on('click', (e) => {
                 this.focusAppFrame(appFrame);
             });
-            this.appsFrames.set(appFrame.getId(), appFrame);
+            this.openedApps.push(appFrame);
 
-            if (addToLocalState) {
-                this.appsOpened[appPath] = { dataPath: dataNode ? dataNode.getPath() : null };
-                this.saveAppsOpened();
-            }
+            if (addToLocalState) this.saveOpenedApps();
             appFrame.recalcDimensions();
+
+            this.focusedAppFrame = appFrame;
 
             return appFrame;
         }
-        saveAppsOpened() {
-            s.e('localState.set', ['appsOpened', JSON.stringify(this.appsOpened)]);
-        }
-        resize() {
-            //if (!this.focusedApp) return;
-            //const {width, height} = e('getDimensionsForAppContainer');
-            //this.focusedApp.setWidth(width);
-            //this.focusedApp.setHeight(height);
+        saveOpenedApps() {
+
+            const arr = [];
+
+            this.openedApps.forEach(appFrame => {
+
+                const sizes = appFrame.getSizes();
+                arr.push({
+                    appPath: appFrame.getAppPath(),
+                    dataPath: appFrame.getDataPath(),
+                    dimensions: {
+                        x: sizes.x,
+                        y: sizes.y,
+                        width: sizes.width,
+                        height: sizes.height
+                    },
+                });
+            });
+            s.e('localState.set', ['openedApps', JSON.stringify(arr)]);
         }
         focusAppFrame(appFrame) {
             if (this.focusedAppFrame) {
@@ -106,13 +125,9 @@
             //appFrame.activate();
             //this.localState.s(appContainer.getId());
         }
-        closeApp() {
-            //this.appsContainers.delete(appContainer.getId());
-            //appFrame.close();
-            //removeFrom local storage
-
-            //this.openedApps.splice(tabIndex, 1);
-            //todo switch to closest opened tab
+        closeAppFrame(appFrame) {
+            this.openedApps.splice(appFrame.getIndex(), 1);
+            this.saveOpenedApps();
         }
         getFocusedApp() { return this.focusedApp; }
         getV() { return this.v }

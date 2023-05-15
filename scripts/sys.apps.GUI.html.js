@@ -98,17 +98,6 @@ async () => {
             /* background: var(--bg-color); */
             -webkit-text-size-adjust: 100%;
         }
-        #app {
-
-        }
-        .mainContainer {
-
-        }
-        /*#app { */
-        /*    display: grid; */
-        /*    grid-template-columns: auto 80%;*/
-        /*    min-height: 100vh; */
-        /*}*/
         .popup {
             position: absolute;
             opacity: 0.97;
@@ -119,7 +108,6 @@ async () => {
             color: hsl(var(--bc));
             padding-right: 30px;
         }
-
         /*.pageSign {*/
         /*    display: flex;*/
         /*    justify-content: center;*/
@@ -148,20 +136,11 @@ async () => {
         }
         .dataBrowser > .node > .nodeContainer > .openClose { display: none; }
         .nodeContainer .quote { color: #AA1011; }
+        .dataValue.string {
+            min-height: 10px;
+            min-width: 2px;
+        }
 
-        .resizer {
-            display: flex;
-            cursor: col-resize;
-        }
-        .resizer .left {
-            width: 4px;
-            height: 100%;
-        }
-        .resizer .center {
-            background: lightgray;
-            width: 1px;
-            height: 100%;
-        }
         .appFrame {
             position: absolute;
             top: 30px;
@@ -195,43 +174,55 @@ async () => {
         .appContent {
             overflow: scroll;
         }
-        .resizeTop {
+        .resizer {
             position: absolute;
             min-width: 1em;
             min-height: 1em;
+        }
+        .resizeTop {
             left: 0.5em;
             right: 0.5em;
             top: -0.5em;
             cursor: ns-resize;
         }
         .resizeBottom {
-            position: absolute;
-            min-width: 1em;
-            min-height: 1em;
             left: 0.5em;
             right: 0.5em;
             bottom: -0.5em;
             cursor: ns-resize;
         }
         .resizeLeft {
-            position: absolute;
-            min-width: 1em;
-            min-height: 1em;
             top: 0.5em;
             bottom: 0.5em;
             left: -0.5em;
             cursor: ew-resize;
         }
         .resizeRight {
-            position: absolute;
-            min-width: 1em;
-            min-height: 1em;
             top: 0.5em;
             bottom: 0.5em;
             right: -0.5em;
             cursor: ew-resize;
         }
-
+        .resizeTopLeft {
+            top: -0.5em;
+            left: -0.5em;
+            cursor: nwse-resize;
+        }
+        .resizeTopRight {
+            top: -0.5em;
+            right: -0.5em;
+            cursor: nesw-resize;
+        }
+        .resizeBottomLeft {
+            bottom: -0.5em;
+            left: -0.5em;
+            cursor: nesw-resize;
+        }
+        .resizeBottomRight {
+            bottom: -0.5em;
+            right: -0.5em;
+            cursor: nwse-resize;
+        }
 
         .openClose {
             display: flex;

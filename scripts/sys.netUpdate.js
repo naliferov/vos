@@ -31,10 +31,10 @@ async (update, token, isSysUpdate) => {
             const http = new (await s.f('sys.httpClient'));
             const finalToken = isSysUpdate ? secretsNetNodes[nodeName] : token;
 
-            const r = await http.post(url + '/stateUpdate', update, {cookie: `token=${finalToken}`});
+            const r = await http.post(url + '/stateUpdate', update, { cookie: `token=${finalToken}` });
             s.l(`UPDATE [${nodeName}]`, 'resp:', r.data);
         } catch (e) {
-            s.l(`error making update of node`, );
+            s.l(`error making update of node`,);
         }
     }
 }

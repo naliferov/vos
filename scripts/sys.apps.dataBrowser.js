@@ -1,5 +1,4 @@
 () => {
-
     return class dataBrowser {
 
         getV() { return this.v; }
@@ -74,7 +73,7 @@
             const newDataNode = new this.node(v);
             newDataNode.setKey(newK);
             const newOutlinerNode = new this.outlinerNode;
-            await newOutlinerNode.init(newDataNode, false);
+            await newOutlinerNode.init(newDataNode, false, this);
 
             e('>after', [newOutlinerNode.getV(), outlinerNode.getV()]);
             this.nodes.set(newOutlinerNode.getDomId(), newOutlinerNode);
@@ -86,9 +85,12 @@
             s.e('state.update', { dataNode: newDataNode, data: v });
         }
 
-        async handleKeyDown(e) {
+        async handleKeydown(e) {
+
+            return;
 
             if (!e.target.classList.contains('dataKey')) return;
+
 
             const outlinerNode = this.getOutlinerNodeById(e.target.getAttribute('outliner_node_id'));
             if (!outlinerNode) { console.log('outlinerNode not found'); return; }
@@ -100,6 +102,7 @@
                 e.preventDefault();
             } else if (k === 'Tab') {
                 e.preventDefault();
+                //todo reimplement later
                 // if (e.shiftKey) {
                 //     const parent = outlinerNode.getParent();
                 //     window.e('>after', [outlinerNode.getV(), parent.getV()]);
@@ -111,20 +114,14 @@
                 window.e('>after', [outlinerNode.prev().getV(), outlinerNode.getV()]);
             } else if (ctrl && k === 'ArrowDown' && outlinerNode.next()) {
                 window.e('>after', [outlinerNode.getV(), outlinerNode.next().getV()]);
-            } */else if (ctrl && k === 'v') {
-                //setTimeout(() => {
-                //outlinerNode.updateNameInContextNode();
-                //this.save();
-                //}, 200);
-                return;
-            } else {
+            } */else {
                 return;
             }
             e.target.focus();
             //await this.save();
         }
 
-        async handleKeyUp(e) {
+        async handleKeyup(e) {
 
             if (!e.target.classList.contains('dataKey')) return;
 
@@ -133,9 +130,9 @@
 
             const outlinerNode = this.getOutlinerNodeById(e.target.getAttribute('outliner_node_id'));
 
-            const node = outlinerNode.getDataNode();
+            const dataNode = outlinerNode.getDataNode();
             const newK = e.target.innerText;
-            const v = node.getData();
+            const v = dataNode.getData();
 
             if (newK.length === 0) {
                 if (!confirm('Delete object?')) return;
@@ -143,19 +140,18 @@
                 return;
             }
 
-            const oldKPath = outlinerNode.getPath();
-            const newKPath = [...oldKPath];
-            newKPath[newKPath.length - 1] = newK;
+            const oldPath = outlinerNode.getPath();
+            const newPath = oldPath.length === 1 ? [newK] : [...oldPath.slice(0, -1), newK];
 
-            if (newKPath.toString() === oldKPath.toString()) return;
+            if (newPath.toString() === oldPath.toString()) return;
 
-            await this.http.post('/stateUpdate', { cmds: [{ newPath: newKPath, oldPath: oldKPath, op: 'mv' }] });
+            await this.http.post('/stateUpdate', { cmds: [{ newPath: newPath, oldPath: oldPath, op: 'mv' }] });
             const parentDataNode = outlinerNode.getParent().getDataNode();
 
-            parentDataNode.set(newKPath.at(-1), v);
-            parentDataNode.del(oldKPath.at(-1));
+            parentDataNode.set(newPath.at(-1), v);
+            parentDataNode.del(oldPath.at(-1));
 
-            node.setKey(newK);
+            dataNode.setKey(newK);
         }
 
         async handleClick(e) {
@@ -218,15 +214,6 @@
                 }
             }
         }
-
-        async handleDblClick(e) {
-            if (!e.target.classList.contains('dataKey') && !e.target.classList.contains('dataValue')) {
-                return;
-            }
-            //let outlinerNode = this.getOutlinerNodeById(e.target.getAttribute('outliner_node_id'));
-            //window.e('openNode', {outlinerNode});
-        }
-
         handleContextMenu(e) {
             e.preventDefault();
 
@@ -234,8 +221,8 @@
             const isDataV = e.target.classList.contains('dataValue');
             if (!isDataK && !isDataV) return;
 
-            const outlinerNode = this.getOutlinerNodeById(e.target.getAttribute('outliner_node_id'));
-            const dataNode = outlinerNode.getDataNode();
+            const node = this.getOutlinerNodeById(e.target.getAttribute('outliner_node_id'));
+            const dataNode = node.getDataNode();
             const data = dataNode.getData();
 
             const v = s.f('sys.ui.view');
@@ -265,7 +252,7 @@
                     if (name === 'GUI') continue;
                     let appBtn = createBtn(name);
                     appBtn.on('click', () => {
-                        window.e('openNode', { appPath: `sys.apps.${name}`, outlinerNode });
+                        window.e('openNode', { appPath: `sys.apps.${name}`, outlinerNode: node });
                         popup.clear();
                     });
                     window.e('>', [appBtn, submenu]);
@@ -291,13 +278,13 @@
 
                             data[k] = v;
                             const dataNode = new this.node;
-                            dataNode.setPath([...outlinerNode.getPath(), k]);
+                            dataNode.setPath([...node.getPath(), k]);
                             s.e('state.update', { dataNode, data: v });
                             break;
                         }
                     }
 
-                    outlinerNode.reopen();
+                    node.reopen();
                     popup.clear();
                 });
                 window.e('>', [oBtn, popup]);
@@ -305,7 +292,7 @@
 
             oBtn = createBtn('Copy');
             oBtn.on('click', () => {
-                this.buffer = { mode: 'copy', outlinerNode };
+                this.buffer = { mode: 'copy', node };
                 popup.clear();
             });
             oBtn.on('pointerenter', removeSubmenu);
@@ -313,7 +300,7 @@
 
             oBtn = createBtn('Cut');
             oBtn.on('click', () => {
-                this.buffer = { mode: 'cut', outlinerNode };
+                this.buffer = { mode: 'cut', node };
                 popup.clear();
             });
             oBtn.on('pointerenter', removeSubmenu);
@@ -324,7 +311,7 @@
                 oBtn.on('click', async () => {
                     if (!this.buffer) return;
 
-                    const contextNodeData = outlinerNode.getDataNode().getData();
+                    const contextNodeData = node.getDataNode().getData();
                     if (!s.f('sys.isObject', contextNodeData) && !Array.isArray(contextNodeData)) return;
 
                     const bufOurlinerNode = this.buffer.outlinerNode;
@@ -332,7 +319,7 @@
 
                     const dataNodeCopy = new this.node;
                     //todo in case of array we don't need to set key. just push to array
-                    dataNodeCopy.setPath([...outlinerNode.getPath(), dataPath.at(-1)]);
+                    dataNodeCopy.setPath([...node.getPath(), dataPath.at(-1)]);
 
                     const data = structuredClone(bufOurlinerNode.getDataNode().getData());
                     s.e('state.update', { dataNode: dataNodeCopy, data });
@@ -341,7 +328,7 @@
                     }
 
                     this.buffer = null;
-                    outlinerNode.reopen(); //todo remember opened nodes
+                    node.reopen(); //todo remember opened nodes
                     popup.clear();
                 });
                 oBtn.on('pointerenter', removeSubmenu);
@@ -350,7 +337,7 @@
 
             oBtn = createBtn('Duplicate');
             oBtn.on('click', async () => {
-                await this.duplicate(outlinerNode);
+                await this.duplicate(node);
                 popup.clear();
             });
             oBtn.on('pointerenter', removeSubmenu);
@@ -367,7 +354,7 @@
             oBtn = createBtn('Console path');
             oBtn.on('pointerenter', removeSubmenu);
             oBtn.on('click', () => {
-                s.l(outlinerNode.getPath());
+                s.l(node.getPath());
                 popup.clear();
             });
             window.e('>', [oBtn, popup]);
@@ -380,17 +367,17 @@
                 window.e('app.addViewElement', submenu);
 
                 const types = ['Object', 'Array', 'String'];
-                types.forEach(type => {
-                    let btn = createBtn(type);
+                types.forEach(t => {
+                    let btn = createBtn(t);
                     btn.on('click', () => {
                         let data;
-                        if (type === 'Array') data = [];
-                        if (type === 'Object') data = {};
-                        if (type === 'String') data = 'str';
+                        if (t === 'Array') data = [];
+                        if (t === 'Object') data = {};
+                        if (t === 'String') data = 'str';
                         if (data === undefined) return;
-                        s.e('state.update', { outlinerNode, data });
+                        s.e('state.update', { outlinerNode: node, data });
 
-                        outlinerNode.getParent().reopen();
+                        node.getParent().reopen();
                         popup.clear();
                     });
                     window.e('>', [btn, submenu]);

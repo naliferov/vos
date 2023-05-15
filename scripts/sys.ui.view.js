@@ -75,19 +75,26 @@
             if (!this.data.style) this.data.style = {};
             if (x) {
                 this.data.style.left = x + 'px';
-                this.dom.style.left = x + 'px';
+                this.getDOM().style.left = x + 'px';
             }
             if (y) {
                 this.data.style.top = y + 'px';
-                this.dom.style.top = y + 'px';
+                this.getDOM().style.top = y + 'px';
+            }
+        }
+        getPosition() {
+            const sizes = this.getSizesAbsolute();
+            return {
+                x: sizes.x,
+                y: sizes.y
             }
         }
         setSize(width, height) {
             if (width) this.getDOM().style.width = width + 'px';
             if (height) this.getDOM().style.height = height + 'px';
         }
+        getSize() { return this.getSizesAbsolute(); }
         getSizes() { return this.dom.getBoundingClientRect() }
-        size() { return this.getSizes() }
         getSizesAbsolute() {
             let sizes = this.dom.getBoundingClientRect();
             let scrollX = window.scrollX;

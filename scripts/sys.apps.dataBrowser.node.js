@@ -19,6 +19,7 @@ async () => {
         }
         getId() { return this.domId; }
 
+        //todo render undedined and null fields
         async createDataFields(dataNode) {
             const data = dataNode.getData();
             let dType = dataNode.getDataType();
@@ -99,7 +100,7 @@ async () => {
 
         async netUpdate() {
             const v = this.valueV.getTxt();
-            if (!v) {
+            if (!v.trim()) {
                 if (confirm('Delete prop?')) {
                     s.e('state.del', { outlinerNode: this });
                 }
@@ -116,6 +117,7 @@ async () => {
             const { data } = await http.post('/state', { path: this.getPath() });
             if (data) {
                 this.dataNode.setData(data);
+                //todo add global method, getParentNode
                 const parentNode = s.find(this.getPath().slice(0, -1));
                 if (parentNode) {
                     parentNode[this.getPath().at(-1)] = data;
@@ -134,7 +136,6 @@ async () => {
             if (s.f('sys.isEmptyObject', v) || (Array.isArray(v) && v.length === 0)) {
 
                 if (!v[s.sys.SYMBOL_IS_EMPTY_NODE]) await this.requestData();
-                //todo add global method, getParentNode
             }
 
             v = this.dataNode.getData();

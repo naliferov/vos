@@ -76,6 +76,7 @@ async () => {
             input.onClick(e => appsManager.inputEvent('click', e));
             input.onDblClick(e => appsManager.inputEvent('dblclick', e));
             input.onContextMenu(e => appsManager.inputEvent('contextmenu', e));
+            input.onResize(e => s.e('recalcDimensions'));
             this.input = input;
 
             e['app.addViewElement'] = v => e('>', [v, app]);
@@ -85,8 +86,10 @@ async () => {
             e['appFrame.changeSize'] = ({ appFrame, width, height }) => {
                 appsManager.appFrameChangeSize(appFrame, width, height);
             };
+            e['appFrame.close'] = ({ appFrame }) => {
+                appsManager.closeAppFrame(appFrame);
+            };
             //s.e('appFrame.changePosition', { x, y })
-
 
             e['openNode'] = async ({ appPath = 'apps.monacoEditor', outlinerNode }) => {
                 const dataNode = outlinerNode.getDataNode();
@@ -106,18 +109,8 @@ async () => {
                 this.input.onPointerMove(move);
                 this.input.onPointerUp(up);
             }
-
-            e['terminalSizeChanged'] = () => {
-                s.e('recalcDimensions');
-            }
             e['recalcDimensions'] = () => {
-                //const height = window.innerHeight - terminal.getHeight();
-
-                //outliner.setHeight(height - runBtn.getSizes().height);
-                //appsManager.setHeight(height);
-
-                //const appContainerWidth = window.innerWidth - this.outliner.getWidth();
-                //appsManager.setWidth(appContainerWidth);
+                mainContainer.setSize(globalThis.innerWidth, globalThis.innerHeight);
             }
             e['getDimensionsForAppContainer'] = () => {
                 return {
@@ -234,18 +227,15 @@ async () => {
             this.mainContainer = mainContainer;
             e('>', [mainContainer, app]);
 
+            //setWidth and height of mainContainer
+
             const appsManager = new (await s.f('sys.apps.GUI.appsManager'));
             await appsManager.init(mainContainer);
-            input.onResize(e => s.e('recalcDimensions'));
-
-            //localState.set('isTerminalShowed', '');
-            //if (!localState.get('isTerminalShowed')) {
-            //terminal.hide();
-            //localState.set('isTerminalShowed', '');
-            //}
 
             s.sys.popup = new (await s.f('sys.apps.GUI.popup'));
             e('>', [s.sys.popup, app]);
+
+            s.e('recalcDimensions');
 
             const eventSource = () => {
                 const sse = new EventSource('/stream');

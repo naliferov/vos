@@ -3,12 +3,13 @@
 
         getApp() { return this.app; },
         getAppPath() { return this.appPath; },
+        getDataPath() { return this.dataPath; },
         getView() { return this.view; },
-        getId() { return this.id; },
+
+        setIndex(index) { this.index = index; },
+        getIndex() { return this.index; },
 
         async init(appPath, dataNode, v) {
-
-            this.id = await s.f('sys.uuid');
 
             this.view = new v({ class: 'appFrame' });
             this.view.setSize(500, 500);
@@ -25,6 +26,7 @@
             closeBtn.on('click', () => {
                 this.app.close();
                 this.view.remove();
+                s.e('appFrame.close', { appFrame: this });
             });
 
             const title = new v({ txt: this.app.getTitle(), class: 'appTitle' });
@@ -37,35 +39,45 @@
             await this.app.init();
             e('>', [this.app.getV(), content]);
 
-            const resizeTop = new v({ class: 'resizeTop' });
+            const resizeTop = new v({ class: ['resizer', 'resizeTop'] });
             e('>', [resizeTop, this.view]);
-            resizeTop.on('pointerdown', (e) => this.resizeTop(e));
+            resizeTop.on('pointerdown', (e) => this.resizeTop(e, resizeTop));
 
-            const nsResizeBottom = new v({ class: 'resizeBottom' });
+            const nsResizeBottom = new v({ class: ['resizer', 'resizeBottom'] });
             e('>', [nsResizeBottom, this.view]);
             nsResizeBottom.on('pointerdown', (e) => this.resizeBottom(e));
 
-            const nsResizeLeft = new v({ class: 'resizeLeft' });
+            const nsResizeLeft = new v({ class: ['resizer', 'resizeLeft'] });
             e('>', [nsResizeLeft, this.view]);
             nsResizeLeft.on('pointerdown', (e) => this.resizeLeft(e));
 
-            const resizeRight = new v({ class: 'resizeRight' });
+            const resizeRight = new v({ class: ['resizer', 'resizeRight'] });
             e('>', [resizeRight, this.view]);
             resizeRight.on('pointerdown', (e) => this.resizeRight(e));
 
+            const resizeTopLeft = new v({ class: ['resizer', 'resizeTopLeft'] });
+            e('>', [resizeTopLeft, this.view]);
+            resizeTopLeft.on('pointerdown', (e) => this.resizeTopLeft(e));
 
-            //const resizeLeftTop = new v({ class: 'resizeRight' });
-            //e('>', [resizeRight, this.view]);
-            //resizeRight.on('pointerdown', (e) => this.resizeRight(e));
+            const resizeTopRight = new v({ class: ['resizer', 'resizeTopRight'] });
+            e('>', [resizeTopRight, this.view]);
+            resizeTopRight.on('pointerdown', (e) => this.resizeTopRight(e));
 
-            //open iframe, if need run app in iframe or separate proc
+            const resizeBottomLeft = new v({ class: ['resizer', 'resizeBottomLeft'] });
+            e('>', [resizeBottomLeft, this.view]);
+            resizeBottomLeft.on('pointerdown', (e) => this.resizeBottomLeft(e));
+
+            const resizeBottomRight = new v({ class: ['resizer', 'resizeBottomRight'] });
+            e('>', [resizeBottomRight, this.view]);
+            resizeBottomRight.on('pointerdown', (e) => this.resizeBottomRight(e));
         },
         recalcDimensions() {
-            const height = this.view.size().height - this.topBar.size().height;
+            const height = this.view.getSizes().height - this.topBar.getSizes().height;
             this.content.setSize(null, height);
         },
         setPosition(x, y) { this.view.setPosition(x, y); },
         setSize(width, height) { this.view.setSize(width, height); },
+        getSizes() { return this.view.getSize(); },
 
         topBarDragAndDrop(e) {
             const viewSizes = this.view.getSizes();
@@ -86,16 +98,15 @@
             });
         },
         resizeTop(e) {
-            //const viewSizes = this.view.getSizes(); //sizes of nsBarTop
-            //const shift = { x: e.clientX - viewSizes.x, y: e.clientY - viewSizes.y };
 
             const sizes = this.view.getSizes();
+
             const maxY = sizes.y + sizes.height;
             this.view.addClass('drag');
 
             s.e('input.pointer.setHandlers', {
                 move: e => {
-                    const height = maxY - e.clientY;
+                    const height = maxY - (e.clientY);
                     this.view.setSize(null, height);
                     this.view.setPosition(null, e.clientY);
 
@@ -110,9 +121,6 @@
             });
         },
         resizeBottom(e) {
-            //const viewSizes = this.view.getSizes(); //sizes of nsBarTop
-            //const shift = { x: e.clientX - viewSizes.x, y: e.clientY - viewSizes.y };
-
             const sizes = this.view.getSizes();
             this.view.addClass('drag');
 
@@ -130,9 +138,6 @@
             });
         },
         resizeLeft(e) {
-            //const viewSizes = this.view.getSizes(); //sizes of nsBarTop
-            //const shift = { x: e.clientX - viewSizes.x, y: e.clientY - viewSizes.y };
-
             const sizes = this.view.getSizes();
             const maxW = sizes.x + sizes.width;
             this.view.addClass('drag');
@@ -153,9 +158,6 @@
             });
         },
         resizeRight(e) {
-            //const viewSizes = this.view.getSizes(); //sizes of nsBarTop
-            //const shift = { x: e.clientX - viewSizes.x, y: e.clientY - viewSizes.y };
-
             const sizes = this.view.getSizes();
             this.view.addClass('drag');
 
@@ -165,6 +167,94 @@
                     this.view.setSize(width);
                     this.recalcDimensions();
                     s.e('appFrame.changeSize', { appFrame: this, width });
+                },
+                up: (e) => {
+                    s.e('input.pointer.setHandlers', { move: null, up: null });
+                    this.view.removeClass('drag');
+                }
+            });
+        },
+        resizeTopLeft(e) {
+            const sizes = this.view.getSizes();
+            const maxW = sizes.x + sizes.width;
+            const maxН = sizes.y + sizes.height;
+            this.view.addClass('drag');
+
+            s.e('input.pointer.setHandlers', {
+                move: e => {
+                    const height = maxН - e.clientY;
+                    const width = maxW - e.clientX;
+                    this.view.setSize(width, height);
+                    this.view.setPosition(e.clientX, e.clientY);
+                    this.recalcDimensions();
+
+                    s.e('appFrame.changeSize', { appFrame: this, width, height });
+                    s.e('appFrame.changePosition', { appFrame: this, x: e.clientX, y: e.clientY });
+                },
+                up: (e) => {
+                    s.e('input.pointer.setHandlers', { move: null, up: null });
+                    this.view.removeClass('drag');
+                }
+            });
+        },
+        resizeTopRight(e) {
+            const sizes = this.view.getSizes();
+            const maxН = sizes.y + sizes.height;
+            this.view.addClass('drag');
+
+            s.e('input.pointer.setHandlers', {
+                move: e => {
+                    const height = maxН - e.clientY;
+                    const width = e.clientX - sizes.x;
+                    this.view.setSize(width, height);
+                    this.view.setPosition(null, e.clientY);
+                    this.recalcDimensions();
+
+                    s.e('appFrame.changeSize', { appFrame: this, width, height });
+                    s.e('appFrame.changePosition', { appFrame: this, y: e.clientY });
+                },
+                up: (e) => {
+                    s.e('input.pointer.setHandlers', { move: null, up: null });
+                    this.view.removeClass('drag');
+                }
+            });
+        },
+        resizeBottomLeft(e) {
+            const sizes = this.view.getSizes();
+            const maxW = sizes.x + sizes.width;
+            this.view.addClass('drag');
+
+            s.e('input.pointer.setHandlers', {
+                move: e => {
+                    const width = maxW - e.clientX;
+                    const height = e.clientY - sizes.y;
+
+                    this.view.setSize(width, height);
+                    this.view.setPosition(e.clientX);
+                    this.recalcDimensions();
+                    s.e('appFrame.changeSize', { appFrame: this, width, height });
+                    s.e('appFrame.changePosition', { appFrame: this, x: e.clientX });
+                },
+                up: (e) => {
+                    s.e('input.pointer.setHandlers', { move: null, up: null });
+                    this.view.removeClass('drag');
+                }
+            });
+        },
+        resizeBottomRight(e) {
+            //const viewSizes = this.view.getSizes(); //sizes of nsBarTop
+            //const shift = { x: e.clientX - viewSizes.x, y: e.clientY - viewSizes.y };
+
+            const sizes = this.view.getSizes();
+            this.view.addClass('drag');
+
+            s.e('input.pointer.setHandlers', {
+                move: e => {
+                    const width = e.clientX - sizes.x;
+                    const height = e.clientY - sizes.y;
+                    this.view.setSize(width, height);
+                    this.recalcDimensions();
+                    s.e('appFrame.changeSize', { appFrame: this, width, height });
                 },
                 up: (e) => {
                     s.e('input.pointer.setHandlers', { move: null, up: null });
