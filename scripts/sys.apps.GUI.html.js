@@ -136,6 +136,17 @@ async () => {
         }
         .dataBrowser > .node > .nodeContainer > .openClose { display: none; }
         .nodeContainer .quote { color: #AA1011; }
+
+        .authApp {
+            background: #ededed;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: start;
+            gap: 0.5em;
+            padding-top: 1em;
+        }
+
         .dataValue.string {
             min-height: 10px;
             min-width: 2px;
@@ -332,10 +343,6 @@ async () => {
         .shift8 { margin-left: calc( var(--shift) * 8 ); }
         .shift9 { margin-left: calc( var(--shift) * 9 ); }
         .shift10 { margin-left: calc( var(--shift) * 10 ); }
-
-        .authPanel {
-            align-items: center;
-        }
 
         .monacoEditor {
             /*position: absolute;*/

@@ -24,11 +24,14 @@
             const closeBtn = new v({ class: 'tabCloseBtn' });
             e('>', [closeBtn, topBar]);
             closeBtn.on('click', () => {
-                this.app.close();
                 this.view.remove();
+                if (this.app.close) {
+                    this.app.close();
+                }
                 s.e('appFrame.close', { appFrame: this });
             });
 
+            //todo if not get title, use last part of appPath
             const title = new v({ txt: this.app.getTitle(), class: 'appTitle' });
             e('>', [title, topBar]);
 

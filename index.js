@@ -301,7 +301,6 @@
             const m = { html: 'text/html', js: 'text/javascript', css: 'text/css', map: 'application/json', woff2: 'font/woff2', woff: 'font/woff', ttf: 'font/ttf' };
             if (m[extension]) rs.setHeader('Content-Type', m[extension]);
 
-            //rs.setHeader('Access-Control-Allow-Origin', '*');
             rs.end(file);
             return true;
         } catch (e) {
@@ -446,16 +445,6 @@
                 }
                 await s.f('sys.rqStateUpdate', rq, rs);
             },
-            //convert to merge with ability to create not exists path
-            // 'POST:/sysUpdate': async () => {
-            //     if (!s.sys.rqAuthenticate(rq)) {
-            //         rs.writeHead(403).end('denied');
-            //         return;
-            //     }
-            //     const { sys } = await s.sys.rqParseBody(rq);
-            //     s.merge(s.sys, sys);
-            //     rs.s('ok');
-            // },
             'POST:/merge': async () => {
                 if (!s.sys.rqAuthenticate(rq)) {
                     rs.writeHead(403).end('denied');
@@ -496,6 +485,17 @@
                     'Set-Cookie': `token=str; Path=/; Max-Age=-1; SameSite=Strict; Secure; HttpOnly`,
                     'Content-Type': 'text/plain'
                 }).end('ok');
+            },
+            'GET:/sign/user': async () => {
+                let { token } = s.sys.rqGetCookies(rq);
+                if (!token) {
+                    rs.s({ user: null }); return;
+                }
+                const { users } = await s.sys.getSecrets();
+                if (!users[token]) {
+                    rs.s({ user: null }); return;
+                }
+                rs.s({ user: { userName: users[token] } });
             },
             // 'GET:/authorizedUser': async () => {
             //     const cookies = s.sys.rqGetCookies(rq);
@@ -629,8 +629,10 @@
         if (s.server) s.server.listen(8080, () => console.log(`httpServer start port: 8080`));
     }
     s.def('trigger', async () => await trigger());
-    if (s.once(1)) await trigger();
+    if (s.once(2)) await trigger();
     //s.processStop();
+
+    //s.sys.apps.auth.js = s.sys.apps.GUI.authBar.js;
 
     if (sys.netNodesController && !sys.netNodesCheckIsActive) {
 

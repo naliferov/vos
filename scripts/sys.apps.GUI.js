@@ -195,10 +195,8 @@ async () => {
 
                 let oBtn = createBtn('Auth');
                 oBtn.on('click', () => {
+                    appsManager.openApp('sys.apps.auth', null, true);
                     popup.clear();
-                    const authBar = new (s.f('sys.apps.GUI.authBar'));
-                    authBar.init(this.v, this.http);
-                    s.e('>', [authBar, popup]);
                 });
                 //oBtn.on('pointerenter', removeSubmenu);
                 window.e('>', [oBtn, popup]);

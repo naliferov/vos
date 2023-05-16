@@ -37,21 +37,15 @@
             }
         }
         async inputEvent(t, e) {
-
             if (!this.focusedAppFrame) return;
 
             const app = this.focusedAppFrame.getApp();
 
-            if (t === 'click') app.handleClick(e);
-            if (t === 'contextmenu') app.handleContextMenu(e);
-            if (t === 'keydown' && app.handleKeydown) app.handleKeydown(e);
-            if (t === 'keyup' && app.handleKeyup) app.handleKeyup(e);
-
-            // input.onKeyDown(async (e) => await outliner.handleKeyDown(e));
-            // input.onKeyUp(async (e) => await outliner.handleKeyUp(e));
-            // input.onClick(async (e) => await outliner.handleClick(e));
-            // input.onDblClick(async (e) => await outliner.handleDblClick(e));
-            // input.onContextMenu(e => outliner.handleContextMenu(e));
+            if (t === 'click' && app.handleClick) app.handleClick(e);
+            else if (t === 'contextmenu' && app.handleContextmenu) app.handleContextmenu(e);
+            else if (t === 'keydown' && app.handleKeydown) app.handleKeydown(e);
+            else if (t === 'keyup' && app.handleKeyup) app.handleKeyup(e);
+            else if (t === 'blclick' && app.handleDblclick) app.handleDblclick(e);
         }
 
         async appFrameChangePosition(appFrame, x, y) {

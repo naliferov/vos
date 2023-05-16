@@ -40,21 +40,8 @@
         removeNode(id) {
             this.nodes.delete(id);
         }
-        activate() {
-            this.v.show();
-            //const parent = this.v.parent();
-        }
-        deactivate() { this.v.hide(); }
-        close() {
-
-        }
-
-        setHeight(height) { this.getV().setStyles({ height: height + 'px' }); }
-        //todo put outliner content in container without padding and remove this shit
-        getWidth() { return this.getV().getSizes().width; }
-        getHorizontalPadding() {
-            return parseInt(this.getV().getComputedStyle('padding-left').slice(0, -2), 10) * 2;
-        }
+        //deactivate() { this.v.hide(); }
+        close() { }
         //isEmpty() { return this.outLinerRootNode.isEmpty()}
         getOutlinerNodeById(id) { return this.nodes.get(id); }
 
@@ -214,7 +201,7 @@
                 }
             }
         }
-        handleContextMenu(e) {
+        handleContextmenu(e) {
             e.preventDefault();
 
             const isDataK = e.target.classList.contains('dataKey');
