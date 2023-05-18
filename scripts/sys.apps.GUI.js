@@ -1,13 +1,7 @@
-async () => {
+() => {
     return class GUI {
 
         async globals() {
-            //todo reactivity for deps and realtime updates
-            this.http = new (await s.f('sys.httpClient'));
-            this.v = await s.f('sys.ui.view');
-
-            s.sys.eventHandlers = {};
-
             globalThis.e = new Proxy(() => { }, {
                 apply(target, thisArg, args) {
                     const handler = args[0];
@@ -22,31 +16,15 @@ async () => {
                 }
             });
             s.def('e', e);
-
-            s.e['>'] = (args) => {
-                let [v1, v2, index] = args;
-
-                if (v1.getV) v1 = v1.getV();
-                if (v2.getV) v2 = v2.getV();
-
-                if (index !== undefined) {
-                    v2.getDOM().insertBefore(v1.getDOM(), v2.getDOM().children[index]);
-                    return;
-                }
-                v2.getDOM().append(v1.getDOM());
-            }
-            s.e['>before'] = (args) => {
-                const [domA, domB] = args;
-                domB.getDOM().before(domA.getDOM())
-            }
-            s.e['>after'] = (args) => {
-                const [domA, domB] = args;
-                domB.getDOM().after(domA.getDOM())
-            }
         }
 
         async start() {
             await this.globals();
+
+            //todo reactivity for deps and realtime updates
+            this.http = new (await s.f('sys.httpClient'));
+            this.v = await s.f('sys.ui.view');
+
             s.sys.proxyS.set = (obj, prop, val) => {
                 if (prop === 'isTerminalShowed') {
                     if (val) localState.set('isTerminalShowed', 1)
@@ -55,7 +33,6 @@ async () => {
                 }
                 return Reflect.set(obj, prop, val);
             }
-
             // const baseUrl = document.location.protocol + '//' + document.location.host;
             // require.config({ paths: { 'vs': baseUrl + '/node_modules/monaco-editor/min/vs' }});
             // window.MonacoEnvironment = {
@@ -78,7 +55,30 @@ async () => {
             input.onContextMenu(e => appsManager.inputEvent('contextmenu', e));
             input.onResize(e => s.e('recalcDimensions'));
             this.input = input;
+            document.body.addEventListener('touchstart', e => e.preventDefault());
 
+            s.sys.eventHandlers = {};
+
+            e['>'] = args => {
+                let [v1, v2, index] = args;
+
+                if (v1.getV) v1 = v1.getV();
+                if (v2.getV) v2 = v2.getV();
+
+                if (index !== undefined) {
+                    v2.getDOM().insertBefore(v1.getDOM(), v2.getDOM().children[index]);
+                    return;
+                }
+                v2.getDOM().append(v1.getDOM());
+            }
+            e['>before'] = (args) => {
+                const [domA, domB] = args;
+                domB.getDOM().before(domA.getDOM())
+            }
+            e['>after'] = (args) => {
+                const [domA, domB] = args;
+                domB.getDOM().after(domA.getDOM())
+            }
             e['app.addViewElement'] = v => e('>', [v, app]);
             e['appFrame.changePosition'] = ({ appFrame, x, y }) => {
                 appsManager.appFrameChangePosition(appFrame, x, y);
@@ -161,6 +161,9 @@ async () => {
                 if (parentDataNode.isEmpty()) parentOutlinerNode.openCloseBtnHide();
                 outlinerNode.remove();
             }
+            e['state.updateReceive'] = (update) => {
+                s.l(update);
+            }
             s.e['outlinerNode.find'] = id => {
                 const node = this.outliner.nodes.get(id);
                 if (!node) {
@@ -211,8 +214,8 @@ async () => {
 
                 oBtn = createBtn('Terminal');
                 oBtn.on('click', () => {
-                    //appsManager.openApp('sys.apps.dataBrowser', null, true);
-                    //popup.clear();
+                    appsManager.openApp('sys.apps.terminal', null, true);
+                    popup.clear();
                 });
                 window.e('>', [oBtn, popup]);
 
@@ -228,28 +231,33 @@ async () => {
             //setWidth and height of mainContainer
 
             const appsManager = new (await s.f('sys.apps.GUI.appsManager'));
-            await appsManager.init(mainContainer);
+
+            try {
+                await appsManager.init(mainContainer);
+
+            } catch (e) {
+                alert(e.toString() + e.stack);
+            }
 
             s.sys.popup = new (await s.f('sys.apps.GUI.popup'));
             e('>', [s.sys.popup, app]);
 
             s.e('recalcDimensions');
 
-            const eventSource = () => {
-                const sse = new EventSource('/stream');
-                sse.onmessage = (event) => {
-                    let msg = '';
-                    try {
-                        msg = JSON.parse(event.data);
-                    } catch (e) {
-                        console.error(e);
-                        return;
-                    }
-                    s.l(msg);
+            const es = new EventSource('/stream');
+            es.onmessage = event => {
+                let data = {};
+                try {
+                    data = JSON.parse(event.data);
+                } catch (e) {
+                    console.error(e);
+                    return;
                 }
-                sse.onerror = (e) => console.log('An error occurred while attempting to connect.', e);
+                if (data.logMsg) {
+                    s.e('terminal.logMsg', data.logMsg);
+                } else if (data.statUpdate) { }
             }
-            eventSource();
+            es.onerror = (e) => s.l('An error occurred while attempting to connect.', e);
         }
     }
 }

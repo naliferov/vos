@@ -113,17 +113,20 @@ async () => {
         getDomId() { return this.domId }
 
         async requestData() {
+
+            const path = this.getPath();
             const http = new (await s.f('sys.httpClient'));
-            const { data } = await http.post('/state', { path: this.getPath() });
+            const { data } = await http.post('/state', { path });
             if (data) {
                 this.dataNode.setData(data);
-                //todo add global method, getParentNode
-                const parentNode = s.find(this.getPath().slice(0, -1));
+
+                //todo add method, getParentNode
+                const parentNode = s.find(path.slice(0, -1));
                 if (parentNode) {
-                    parentNode[this.getPath().at(-1)] = data;
+                    parentNode[path[path.length - 1]] = data;
                 }
             } else {
-                this.dataNode.getData()[s.sys.SYMBOL_IS_EMPTY_NODE] = true;
+                //this.dataNode.getData()[s.sys.SYMBOL_IS_EMPTY_NODE] = true;
             }
         }
 

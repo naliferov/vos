@@ -79,19 +79,11 @@ async () => {
             --b3: 180 1.9608% 90%;
             --bc: 215 27.907% 16.863%;
         }
-        .darkTheme {
-            --bg-color: #2B2B2B;
-            --keyword-color: #CC7832;
-            --name-color: #A7B2BE;
-            --op-color: #A7B2BE;
-            --string-color: #4E6E4E;
-            --number-color: #6195BB;
-            --prop-name-color: #726BA7;
-            --function-color: #FBC169;
-            --bracket-color: #A7B2BE;
-        }
+        html { overflow: hidden; }
         body {
+            overflow: hidden;
             margin: 0;
+            position: relative;
             color: hsl(var(--bc));
             font-family: Helvetica, Tahoma, Arial, sans-serif;
             font-size: 15px;
@@ -157,8 +149,10 @@ async () => {
             top: 30px;
             box-shadow: 0 2px 4px 0 rgba(0,0,0,0.2);
         }
+
+        /* this create small glitches when after start and drag window */
         .appFrame.drag {
-          -webkit-touch-callout: none; /* iOS Safari */
+            -webkit-touch-callout: none; /* iOS Safari */
             -webkit-user-select: none;   /* Chrome/Safari/Opera */
             -khtml-user-select: none;    /* Konqueror */
             -moz-user-select: none;      /* Firefox */
@@ -291,12 +285,9 @@ async () => {
             background: rgb(221 131 131 / 99%);
         }
         .terminal {
-            position: fixed;
-            width: 100%;
-            overflow-x: hidden;
-            overflow-y: scroll;
-            bottom: 0;
-            z-index: 5;
+            height: 100%;
+            background: hsl(var(--b2));
+            overflow: scroll;
         }
         .terminal .scrollContainer {
             white-space: nowrap;
@@ -307,7 +298,6 @@ async () => {
             border: 1px solid #969696;
             color: black;
         }
-
         .terminal pre {
             margin: 0;
             white-space: -moz-pre-wrap; /* Mozilla, supported since 1999 */
@@ -320,15 +310,9 @@ async () => {
             display: flex;
             align-items: center;
             background: #B3E5BE;
-            padding: 0 10px;
             gap: 10px;
         }
-        .processLogContent {
-            padding: 0 10px;
-            height: 180px;
-            background: hsl(var(--b2, var(--b1)));
-            overflow: scroll;
-        }
+        .processLogContent { padding: 0 10px; }
         [contenteditable] {outline: 0; }
         [contenteditable]:focus {}
 
@@ -397,15 +381,14 @@ async () => {
             background: #d9d9d9;
         }
         .burger-btn {
+            position: absolute;
             display: flex;
             flex-direction: column;
-            justify-content: space-around;
-            width: 20px;
+            width: 21px;
             height: 19px;
-            margin: 3px 0 0 0;
+            gap: 3px;
             border: none;
             cursor: pointer;
-            position: absolute;
         }
         .burger-line {
             height: 3px;
@@ -421,7 +404,10 @@ async () => {
 </head>
 <body>
 
-<div id="app"></div>
+
+<div id="app">
+
+</div>
 <script type="text/javascript" src="/node_modules/monaco-editor/min/vs/loader.js"></script>
 <script>${s['js']}</script>
 </body>

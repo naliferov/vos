@@ -13,7 +13,7 @@
 
             this.view = new v({ class: 'appFrame' });
             this.view.setSize(500, 500);
-            this.app = new (s.f(appPath));
+            this.app = new (await s.f(appPath));
             this.appPath = appPath;
 
             const topBar = new v({ class: ['appTopBar'] });

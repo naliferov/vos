@@ -88,6 +88,7 @@
     });
 
     if (typeof window !== 'undefined') {
+
         const sysState = await (await fetch('/state', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -444,6 +445,7 @@
                     rs.s('Server state is not ready.'); return;
                 }
                 await s.f('sys.rqStateUpdate', rq, rs);
+                //send updates to frontend
             },
             'POST:/merge': async () => {
                 if (!s.sys.rqAuthenticate(rq)) {
@@ -497,16 +499,6 @@
                 }
                 rs.s({ user: { userName: users[token] } });
             },
-            // 'GET:/authorizedUser': async () => {
-            //     const cookies = s.sys.rqGetCookies(rq);
-            //     if (!cookies.token) {
-            //         rs.s({userName: null});
-            //         return;
-            //     }
-            //     const users = (await s.sys.getSecrets()).users;
-            //     let userName = users[cookies.token];
-            //     rs.s({userName});
-            // },
             'POST:/uploadFile': async () => {
                 if (!rq.isLocal) { rs.writeHead(403).end('denied'); return; }
 
@@ -631,8 +623,6 @@
     s.def('trigger', async () => await trigger());
     if (s.once(2)) await trigger();
     //s.processStop();
-
-    //s.sys.apps.auth.js = s.sys.apps.GUI.authBar.js;
 
     if (sys.netNodesController && !sys.netNodesCheckIsActive) {
 

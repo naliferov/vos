@@ -76,9 +76,8 @@
 
             e('>', [appFrame.getView(), this.uiContainer]);
 
-            appFrame.getView().on('click', (e) => {
-                this.focusAppFrame(appFrame);
-            });
+            appFrame.getView().on('click', (e) => this.focusAppFrame(appFrame));
+            appFrame.getView().on('contextmenu', (e) => this.focusAppFrame(appFrame));
             this.openedApps.push(appFrame);
 
             if (addToLocalState) this.saveOpenedApps();

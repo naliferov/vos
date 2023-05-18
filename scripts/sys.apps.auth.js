@@ -1,6 +1,7 @@
 () => {
     return class auth {
 
+        //todo defaultDimentions
         getV() { return this.v }
         getTitle() { return 'Auth'; }
         async init() {

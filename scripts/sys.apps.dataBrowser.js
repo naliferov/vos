@@ -1,4 +1,4 @@
-() => {
+async () => {
     return class dataBrowser {
 
         getV() { return this.v; }
