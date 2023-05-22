@@ -14,15 +14,15 @@
             clear.on('click', e => this.content.clear());
             e('>', [clear, this.header]);
 
-            const scrollContainer = new v({ class: ['scrollContainer', 'flex'] });
-            e('>', [scrollContainer, this.header]);
+            const scrollBlock = new v({ class: ['scrollBlock', 'flex'] });
+            e('>', [scrollBlock, this.header]);
 
             this.automaticScroll = new v({ tagName: 'input' });
             this.automaticScroll.setAttr('type', 'checkbox');
             this.automaticScroll.setAttr('checked', 'true');
 
-            e('>', [this.automaticScroll, scrollContainer]);
-            e('>', [new v({ txt: 'automatic scroll' }), scrollContainer]);
+            e('>', [this.automaticScroll, scrollBlock]);
+            e('>', [new v({ txt: 'automatic scroll' }), scrollBlock]);
 
             //const http = new (s.f('sys.httpClient'));
             // const file = new v({tagName: 'input'});
@@ -57,10 +57,10 @@
                     //localState.del('outlinerHidden');
                 }
             });
-            consoleCmd.on('keyup', (e) => { });
-            e('>', [consoleCmd, this.v]);
+            consoleCmd.on('keyup', e => { });
+            e('>', [consoleCmd, this.header]);
 
-            this.content = new v({ class: 'processLogContent' });
+            this.content = new v({ class: 'log' });
             e('>', [this.content, this.v]);
 
             e['terminal.logMsg'] = logMsg => {

@@ -112,7 +112,10 @@
         try { await s.nodeFS.access(path); return true; }
         catch { return false; }
     });
+
+    //if no secrets create such file
     s.sys.getSecrets = async () => JSON.parse(await s.nodeFS.readFile('state/secrets.json', 'utf8'));
+    if (!s.secrets) s.def('secrets', await s.sys.getSecrets());
 
     if (!sys.netUpdateIds) s.defObjectProp(sys, 'netUpdateIds', new Map);
     if (!s.loop) {
@@ -621,7 +624,7 @@
         if (s.server) s.server.listen(8080, () => console.log(`httpServer start port: 8080`));
     }
     s.def('trigger', async () => await trigger());
-    if (s.once(2)) await trigger();
+    if (s.once(1)) await trigger();
     //s.processStop();
 
     if (sys.netNodesController && !sys.netNodesCheckIsActive) {

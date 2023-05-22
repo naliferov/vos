@@ -112,14 +112,9 @@
             e['recalcDimensions'] = () => {
                 mainContainer.setSize(globalThis.innerWidth, globalThis.innerHeight);
             }
-            e['getDimensionsForAppContainer'] = () => {
-                return {
-                    width: window.innerWidth - this.outliner.getWidth(),
-                    height: window.innerHeight - terminal.getHeight() - appsManager.getTabsHeight()
-                }
-            };
             e['state.update'] = async ({ outlinerNode, dataNode, data }) => {
 
+                //send here path and data
                 if (!dataNode) dataNode = outlinerNode.getDataNode();
                 dataNode.setData(data);
 
@@ -148,7 +143,6 @@
                     }
                 }
             }
-            e['state.mv'] = async ({ oldPath, newPath }) => { }
             e['state.del'] = async ({ outlinerNode, dataNode }) => {
                 //todo case  for dataNode
                 const path = outlinerNode.getPath();
@@ -179,6 +173,8 @@
             e['localState.get'] = k => localState.get(k);
 
             const localState = new (await s.f('sys.apps.GUI.localState'));
+
+            //console.log(await s.f('sys.apps.fileUploader'));
 
             //BUILDING UI
             const app = new this.v;

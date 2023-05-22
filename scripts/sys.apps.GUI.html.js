@@ -284,16 +284,17 @@ async () => {
             border-radius: 100px;
             background: rgb(221 131 131 / 99%);
         }
+
         .terminal {
             height: 100%;
             background: hsl(var(--b2));
             overflow: scroll;
+            -webkit-overflow-scrolling: touch;
         }
-        .terminal .scrollContainer {
+        .terminal .scrollBlock {
             white-space: nowrap;
         }
-        .consoleCmd {
-            width: 100%;
+        .terminal .consoleCmd {
             outline: none;
             border: 1px solid #969696;
             color: black;
@@ -306,13 +307,13 @@ async () => {
             white-space: pre-wrap; /* CSS3 - Text module (Candidate Recommendation) http://www.w3.org/TR/css3-text/#white-space */
             word-wrap: break-word; /* IE 5.5+ */
         }
-        .consoleHeader {
+        .terminal .consoleHeader {
             display: flex;
-            align-items: center;
+            position: sticky;
+            top: 0;
             background: #B3E5BE;
             gap: 10px;
         }
-        .processLogContent { padding: 0 10px; }
         [contenteditable] {outline: 0; }
         [contenteditable]:focus {}
 

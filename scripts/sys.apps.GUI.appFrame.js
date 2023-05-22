@@ -81,7 +81,12 @@
         setPosition(x, y) { this.view.setPosition(x, y); },
         setSize(width, height) { this.view.setSize(width, height); },
         getSizes() { return this.view.getSize(); },
-
+        setDefaultSize() {
+            if (this.app.getDefaultSize) {
+                const { width, height } = this.app.getDefaultSize();
+                this.setSize(width, height);
+            }
+        },
         topBarDragAndDrop(e) {
             const viewSizes = this.view.getSizes();
             const shift = { x: e.clientX - viewSizes.x, y: e.clientY - viewSizes.y };

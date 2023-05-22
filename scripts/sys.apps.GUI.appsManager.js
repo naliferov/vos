@@ -47,21 +47,10 @@
             else if (t === 'keyup' && app.handleKeyup) app.handleKeyup(e);
             else if (t === 'blclick' && app.handleDblclick) app.handleDblclick(e);
         }
-
         async appFrameChangePosition(appFrame, x, y) {
-
-            // const appFrameData = this.openedApps[appFrame.getIndex()];
-
-            // if (x) appFrameData.dimensions.x = x;
-            // if (y) appFrameData.dimensions.y = y;
             this.saveOpenedApps();
         }
         async appFrameChangeSize(appFrame, width, height) {
-
-            // const appFrameData = this.openedApps[appFrame.getIndex()];
-
-            // if (width) appFrameData.dimensions.width = width;
-            // if (height) appFrameData.dimensions.height = height;
             this.saveOpenedApps();
         }
 
@@ -80,7 +69,11 @@
             appFrame.getView().on('contextmenu', (e) => this.focusAppFrame(appFrame));
             this.openedApps.push(appFrame);
 
-            if (addToLocalState) this.saveOpenedApps();
+            if (addToLocalState) {
+                //use this methods manually. after this skip and remove flag "addToLocalState"
+                appFrame.setDefaultSize();
+                this.saveOpenedApps();
+            }
             appFrame.recalcDimensions();
 
             this.focusedAppFrame = appFrame;

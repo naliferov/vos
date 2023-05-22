@@ -1,7 +1,9 @@
 () => {
     return class auth {
 
-        //todo defaultDimentions
+        getDefaultSize() {
+            return { width: 350, height: 136 }
+        }
         getV() { return this.v }
         getTitle() { return 'Auth'; }
         async init() {

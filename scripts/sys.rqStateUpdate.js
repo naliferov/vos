@@ -17,8 +17,7 @@ async (rq, rs) => {
             await s.fs.mkDirIfNotExists(dir);
             const userFile = `${dir}/${username}.json`;
             if (await s.fsAccess(userFile)) {
-                const user = await s.nodeFS.readFile(userFile, 'utf8');
-                s.users[username] = JSON.parse(user);
+                s.users[username] = JSON.parse(await s.nodeFS.readFile(userFile, 'utf8'));
             }
         }
     }
@@ -118,14 +117,16 @@ async (rq, rs) => {
 
     const isSysToken = s.sys.token === token;
     const { users } = await s.sys.getSecrets();
-    let userName = users[token];
 
+    let userName = users[token];
     if (userName) await loadUserByUsername(userName);
 
     if (!isSysToken && !userName) {
         rs.writeHead(403).end('Sys token or user not found.');
         return;
     }
+
+    //rq.headers['content-type'] === 'application/octet-stream' && rq.headers['filename'] && rq.headers['path'];
 
     const { cmds, updateId } = await s.sys.rqParseBody(rq);
 
@@ -168,9 +169,8 @@ async (rq, rs) => {
             return;
         }
 
-        //todo get path from disc if exists. check size of memory
         if (path) {
-            //await loadFromDisk(path);
+            await loadFromDisk(path);
         } else if (newPath && oldPath) {
             await loadFromDisk(oldPath);
             await loadFromDisk(newPath);

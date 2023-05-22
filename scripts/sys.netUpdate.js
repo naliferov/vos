@@ -24,7 +24,7 @@ async (update, token, isSysUpdate) => {
 
         const node = s.net[nodeName];
         if (!node.isActive || nodeName === s.sys.netId) {
-            s.l(`skip node [${nodeName}]`); continue;
+            s.l(`netNode skip [${nodeName}]`); continue;
         }
         try {
             const url = node.host ? 'https://' + node.host : 'http://' + node.ip;
@@ -32,7 +32,7 @@ async (update, token, isSysUpdate) => {
             const finalToken = isSysUpdate ? secretsNetNodes[nodeName] : token;
 
             const r = await http.post(url + '/stateUpdate', update, { cookie: `token=${finalToken}` });
-            s.l(`UPDATE [${nodeName}]`, 'resp:', r.data);
+            s.l(`netNode update [${nodeName}]`, 'resp:', r.data);
         } catch (e) {
             s.l(`error making update of node`,);
         }
