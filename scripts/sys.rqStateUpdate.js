@@ -3,8 +3,9 @@ async (rq, rs) => {
     if (!token) {
         rs.writeHead(403).end('Access denied. userToken not found.'); return;
     }
-    if (!s.sys.token) {
-        rs.writeHead(500).end('sys.token is not defined.'); return;
+    const netToken = s.sys.getNetToken();
+    if (!netToken) {
+        rs.writeHead(500).end('netToken is not defined.'); return;
     }
 
     const loadFromDisk = async path => {
@@ -115,7 +116,7 @@ async (rq, rs) => {
         return true;
     }
 
-    const isSysToken = s.sys.token === token;
+    const isSysToken = netToken === token;
     const { users } = await s.sys.getSecrets();
 
     let userName = users[token];

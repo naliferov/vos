@@ -104,33 +104,60 @@
     s.def('processStop', () => { s.l('stop process ', s.process.pid); s.process.exit(0); });
     //s.def('processRestart', () => { s.l('stop process ', s.process.pid); s.process.exit(0); });
     s.def('nodeFS', (await import('node:fs')).promises);
+    s.def('nodeCrypto', await import('node:crypto'));
     s.def('fsAccess', async path => {
         try { await s.nodeFS.access(path); return true; }
         catch { return false; }
     });
+    sys.getRandStr = length => {
+        const alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_-+=<>?';
+        const password = [];
+        for (let i = 0; i < length; i++) {
+            const randomIndex = s.nodeCrypto.randomInt(0, alphabet.length);
+            password.push(alphabet.charAt(randomIndex));
+        }
+        return password.join('');
+    }
 
-    //todo need to behave with state/secrets as regular namespace. and for update state/secrets use name mechnism as for other namespace
-    //but with incresed level of security
+    //SECRETS
     const secretsFName = 'state/secrets.json';
     if (!await s.fsAccess(secretsFName)) {
         await s.nodeFS.writeFile(secretsFName, JSON.stringify({ netNodes: {}, users: {} }));
     }
-    s.sys.getSecrets = async () => JSON.parse(await s.nodeFS.readFile(secretsFName, 'utf8'));
+    sys.getSecrets = async () => JSON.parse(await s.nodeFS.readFile(secretsFName, 'utf8'));
+    sys.getNetToken = () => {
+        if (!sys.netId || !s.secrets) return;
+        return s.secrets.netNodes[sys.netId];
+    }
     if (!s.secrets) s.def('secrets', await s.sys.getSecrets());
 
+    //NET ID
     const netIdFName = 'state/netId.txt';
-    if (!sys.netId && await s.fsAccess(netIdFName)) { //watcher, controll of watchers
 
+    if (!sys.netId) { //todo watcher, controll of watchers from UI
+
+        if (!await s.fsAccess(netIdFName)) {
+            await s.nodeFS.writeFile(netIdFName, 'defaultNetId');
+        }
         const netId = (await s.nodeFS.readFile(netIdFName, 'utf8')).trim();
         s.defObjectProp(sys, 'netId', netId);
 
         const netNodesSecrets = s.secrets.netNodes;
         if (sys.netId) {
-            s.defObjectProp(s.sys, 'token', netNodesSecrets[sys.netId]);
+            s.defObjectProp(sys, 'token', netNodesSecrets[sys.netId]);
         }
     }
 
+    //CREATE SECRET FOR NET ID IF NOT EXISTS
+    if (sys.netId && !sys.getNetToken()) {
+        const token = sys.getRandStr(18);
+        s.secrets.netNodes[sys.netId] = token;
+        await s.copyToDisc('secrets');
+    }
     if (!sys.netUpdateIds) s.defObjectProp(sys, 'netUpdateIds', new Map);
+
+
+    //LOOP
     if (!s.loop) {
         s.def('loop', {
             file: 'index.js',
@@ -327,12 +354,10 @@
         }
     }
     s.sys.rqGetCookies = rq => {
-
         const header = rq.headers.cookie;
         if (!header || header.length < 1) {
             return {};
         }
-
         const cookies = header.split('; ');
         const result = {};
         for (let i in cookies) {
@@ -352,7 +377,8 @@
     }
     s.sys.rqAuthenticate = (rq) => {
         let { token } = s.sys.rqGetCookies(rq);
-        return token && s.sys.token && token === s.sys.token;
+        const netToken = s.sys.getNetToken();
+        return token && netToken && token === netToken;
     }
 
     s.sys.httpRqHandler = async (rq, rs) => {
@@ -393,11 +419,10 @@
                     catch (e) { console.log(e); }
                 }
             },
-            'GET:/trigger': async () => {
-                if (!isLocal) return;
-                if (s.trigger) s.trigger();
+            'GET:/': async () => {
+                //todo make html separate file, and same for css
+                rs.s(await s.f('sys.apps.GUI.html'), 'text/html')
             },
-            'GET:/': async () => rs.s(await s.f('sys.apps.GUI.html'), 'text/html'),
             'GET:/stream': async () => {
                 const rqId = await s.f('sys.uuid');
 
@@ -460,6 +485,7 @@
                 if (!s.sys.rqStateUpdate) {
                     rs.s('Server state is not ready.'); return;
                 }
+                //todo path on dysc js, css
                 await s.f('sys.rqStateUpdate', rq, rs);
                 //send updates to frontend
             },
@@ -580,15 +606,6 @@
 
     const trigger = async () => {
         console.log('ONCE', new Date);
-
-        if (await s.fsAccess('state/netId.txt')) {
-            const netId = await s.nodeFS.readFile('state/netId.txt', 'utf8');
-            s.defObjectProp(s.sys, 'netId', netId.trim());
-
-            const secrets = await s.sys.getSecrets();
-            if (s.sys.netId) s.defObjectProp(s.sys, 'token', secrets.netNodes[s.sys.netId]);
-            s.defObjectProp(s.sys, 'secrets', secrets);
-        }
 
         let paths = ['net', 'sys'];
         for (let i = 0; i < paths.length; i++) {
