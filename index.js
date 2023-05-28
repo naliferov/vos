@@ -667,8 +667,8 @@
 
             if (!conf.promise) {
                 try {
-                    //conf.promise = sys.promiseCreate(f);
-                    //await conf.promise;
+                    conf.promise = sys.promiseCreate(f);
+                    await conf.promise;
                 } catch (e) {
                     s.l(e);
                 } finally {
