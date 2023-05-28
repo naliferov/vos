@@ -102,7 +102,6 @@
 
     s.def('process', (await import('node:process')).default);
     s.def('processStop', () => { s.l('stop process ', s.process.pid); s.process.exit(0); });
-    //todo process restart
     //s.def('processRestart', () => { s.l('stop process ', s.process.pid); s.process.exit(0); });
     s.def('nodeFS', (await import('node:fs')).promises);
     s.def('fsAccess', async path => {
@@ -110,9 +109,26 @@
         catch { return false; }
     });
 
-    //if no secrets create such file
-    s.sys.getSecrets = async () => JSON.parse(await s.nodeFS.readFile('state/secrets.json', 'utf8'));
+    //todo need to behave with state/secrets as regular namespace. and for update state/secrets use name mechnism as for other namespace
+    //but with incresed level of security
+    const secretsFName = 'state/secrets.json';
+    if (!await s.fsAccess(secretsFName)) {
+        await s.nodeFS.writeFile(secretsFName, JSON.stringify({ netNodes: {}, users: {} }));
+    }
+    s.sys.getSecrets = async () => JSON.parse(await s.nodeFS.readFile(secretsFName, 'utf8'));
     if (!s.secrets) s.def('secrets', await s.sys.getSecrets());
+
+    const netIdFName = 'state/netId.txt';
+    if (!sys.netId && await s.fsAccess(netIdFName)) { //watcher, controll of watchers
+
+        const netId = (await s.nodeFS.readFile(netIdFName, 'utf8')).trim();
+        s.defObjectProp(sys, 'netId', netId);
+
+        const netNodesSecrets = s.secrets.netNodes;
+        if (sys.netId) {
+            s.defObjectProp(s.sys, 'token', netNodesSecrets[sys.netId]);
+        }
+    }
 
     if (!sys.netUpdateIds) s.defObjectProp(sys, 'netUpdateIds', new Map);
     if (!s.loop) {
@@ -120,7 +136,7 @@
             file: 'index.js',
             delay: 2000,
             isWorking: false,
-            start: async function () {
+            start: async function () { //connect this to UI btn and API call
                 this.isWorking = true;
                 while (1) {
                     await new Promise(r => setTimeout(r, this.delay));
@@ -133,7 +149,7 @@
                     catch (e) { console.log(e); }
                 }
             },
-            stop: function () {
+            stop: function () { //connect this to UI btn and API call
                 this.isWorking = false;
             },
         });
@@ -548,7 +564,7 @@
         });
     }
 
-    if (!s.logSlicerProc && s.sys.logger) {
+    if (!s.logListenerProc && s.sys.logger) {
 
         const logger = new (await s.f('sys.logger'));
         logger.mute();
@@ -558,11 +574,8 @@
                 v.write(`data: ${json}\n\n`);
             }
         });
-        const os = new s.os(logger);
-        s.def('logSlicerProc', os);
-        os.run('tail -f index.log', false, false, proc => {
-            s.def('logSlicerProc', os);
-        });
+        s.def('logListenerProc', new s.os(logger));
+        s.logListenerProc.run('tail -f index.log', false, false);
     }
 
     const trigger = async () => {
