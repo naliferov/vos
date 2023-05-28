@@ -148,6 +148,7 @@ async () => {
             position: absolute;
             top: 30px;
             box-shadow: 0 2px 4px 0 rgba(0,0,0,0.2);
+            overflow: hidden;
         }
 
         /* this create small glitches when after start and drag window */
@@ -175,9 +176,6 @@ async () => {
             font-weight: bold;
             white-space: nowrap;
             margin-left: 5px;
-        }
-        .appContent {
-            overflow: scroll;
         }
         .resizer {
             position: absolute;

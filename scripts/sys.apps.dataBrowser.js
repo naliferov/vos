@@ -353,15 +353,18 @@ async () => {
                 submenu = new (s.f('sys.apps.GUI.popup'));
                 window.e('app.addViewElement', submenu);
 
-                const types = ['Object', 'Array', 'String'];
+                const types = ['Bool', 'String', 'Object', 'Array'];
                 types.forEach(t => {
                     let btn = createBtn(t);
                     btn.on('click', () => {
                         let data;
                         if (t === 'Array') data = [];
-                        if (t === 'Object') data = {};
-                        if (t === 'String') data = 'str';
-                        if (data === undefined) return;
+                        else if (t === 'Bool') {
+                            data = dataNode.getData() === 'false' ? false : true;
+                        }
+                        else if (t === 'Object') data = {};
+                        else if (t === 'String') data = 'str';
+                        else if (data === undefined) return;
                         s.e('state.update', { outlinerNode: node, data });
 
                         node.getParent().reopen();

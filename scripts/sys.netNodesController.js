@@ -107,9 +107,9 @@ async () => {
             //await s.nodeFS.writeFile(`state/users/${userName}.json`, JSON.stringify(s.users[userName]));
         }
         //upload
-        const mergePath = async (path) => {
-            const netNodes
-        } = await s.sys.getSecrets();
+        // const mergePath = async (path) => {
+        //     const netNodes
+        // } = await s.sys.getSecrets();
 
         const v = s.find(path);
         if (!v) return;
@@ -125,5 +125,4 @@ async () => {
 
     //const r = await curl(80, '/cmd', { cmd: "delete s.sys.rqStateUpdate[s.sys.SYMBOL_FN]" }, netNodes[nodeName]); s.l(r);
     //const r = await curl(80, '/cmd', { cmd: "delete sys.apps.GUI.html[s.sys.SYMBOL_FN]" }, netNodes[nodeName]); s.l(r);
-}
 }

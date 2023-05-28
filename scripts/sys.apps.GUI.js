@@ -114,7 +114,8 @@
             }
             e['state.update'] = async ({ outlinerNode, dataNode, data }) => {
 
-                //send here path and data
+                //todo send here only path and data
+
                 if (!dataNode) dataNode = outlinerNode.getDataNode();
                 dataNode.setData(data);
 

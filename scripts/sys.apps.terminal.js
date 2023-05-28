@@ -17,6 +17,7 @@
             const scrollBlock = new v({ class: ['scrollBlock', 'flex'] });
             e('>', [scrollBlock, this.header]);
 
+            //add persistence chain for every attribute like checked and etc
             this.automaticScroll = new v({ tagName: 'input' });
             this.automaticScroll.setAttr('type', 'checkbox');
             this.automaticScroll.setAttr('checked', 'true');
@@ -24,23 +25,6 @@
             e('>', [this.automaticScroll, scrollBlock]);
             e('>', [new v({ txt: 'automatic scroll' }), scrollBlock]);
 
-            //const http = new (s.f('sys.httpClient'));
-            // const file = new v({tagName: 'input'});
-            // file.setAttr('type', 'file');
-            // e('>', [file, this.header]);
-            // file.on('change', e => {
-            //     const reader = new FileReader;
-            //     reader.onload = async () => {
-            //         s.l(await http.postBuf('/uploadFile', reader.result));
-            //     }
-            //     reader.readAsArrayBuffer(file.getDOM().files[0]);
-            // });
-
-            const cmds = {
-                outlinerHide: () => {
-                    //
-                }
-            };
             const consoleCmd = new v({ tagName: 'input', class: ['nooutline', 'consoleCmd'] });
             this.consoleCmd = consoleCmd;
             consoleCmd.setAttr('placeholder', 'cmd');
@@ -67,12 +51,10 @@
                 const prev = new v({ tagName: 'pre', txt: logMsg });
                 e('>', [prev, this.content]);
 
-                //sticky header
-                //scroll down content
+                if (this.automaticScroll.isChecked()) {
+                    this.v.scrollDown();
+                }
             }
-
-            //listen event logMsg.
-            //on msg add to content
         }
         enableAutomaticScroll() { this.automaticScroll.setAttr('checked', ''); }
     }

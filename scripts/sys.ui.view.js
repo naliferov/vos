@@ -134,7 +134,6 @@
         visibilityShow() { this.getDOM().classList.remove('visibilityHidden'); }
         visibilityHide() { this.getDOM().classList.add('visibilityHidden'); }
 
-        isChecked() { return this.getDOM().checked; }
         removeFromDom() { this.dom.parentNode.removeChild(this.dom); }
         remove() { this.removeFromDom(); }
         toggleEdit() {
@@ -168,11 +167,11 @@
             const parent = this.parentDOM();
             return Array.prototype.indexOf.call(parent.children, this.getDOM());
         }
-
         scrollDown() {
             const dom = this.getDOM();
             dom.scrollTop = dom.scrollHeight;
         }
+        isChecked() { return this.getDOM().checked; }
     }
 
 }

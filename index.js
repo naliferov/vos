@@ -55,9 +55,6 @@
             }
             if (!node[s.sys.SYMBOL_FN]) {
                 node[s.sys.SYMBOL_FN] = eval(node.js);
-                //todo experimental support
-                //const name = Array.isArray(id) ? id.join('.') : id;
-                //node[s.sys.SYMBOL_FN] = (await import(`http://127.0.0.1:8080/module.js?id=${name}&t=${Date.now()}`)).default;
             }
             return node[s.sys.SYMBOL_FN](...args);
         } catch (e) {
@@ -591,6 +588,7 @@
             }
         }
 
+        //controll of watchers from declarativeUI
         const scriptsDirExists = await s.fsAccess('scripts');
         if (scriptsDirExists && !s.scriptsWatcher && s.sys.fsChangesSlicer) {
             s.def('scriptsWatcher', await s.f('sys.fsChangesSlicer', 'scripts'));
@@ -624,22 +622,48 @@
         if (s.server) s.server.listen(8080, () => console.log(`httpServer start port: 8080`));
     }
     s.def('trigger', async () => await trigger());
-    if (s.once(1)) await trigger();
+    if (s.once(2)) await trigger();
     //s.processStop();
 
-    if (sys.netNodesController && !sys.netNodesCheckIsActive) {
 
-        //todo setTimeout for dispose connections and set sys.netNodesCheckIsActive to zero
-        //for prevent use such crutch there should be ability to run long local tasks (loops)
-        if (!s.sys.netId) return;
-        if (s.sys.netId !== 'aliferovMac') return;
+    sys.promiseCreate = async (f, timeoutSeconds = 7) => {
 
-        const netNodesController = await s.f('sys.netNodesController');
-        s.defObjectProp(s.sys, 'netNodesCheckIsActive', 1);
+        return new Promise((res, rej) => {
 
-        try { await netNodesController(s.sys.netId); }
-        catch (e) { s.l(e); }
-        sys.netNodesCheckIsActive = 0;
-        //dispose connections after timeout
+            (async () => {
+                let timeout = setTimeout(() => {
+                    rej({ err: 'promise timeout', f: f.toString() });
+                }, timeoutSeconds * 1000);
+                await f();
+                clearTimeout(timeout);
+                res();
+            })();
+        });
     }
+
+    if (sys.netId && !s.net[sys.netId]) s.net[sys.netId] = {};
+
+    const netCmds = s.net[sys.netId].cmds;
+    if (!netCmds) return;
+
+    for (let i in netCmds) {
+
+        const conf = netCmds[i];
+        if (conf.cmd && conf.isEnabled) {
+            const f = eval(`async () => { ${conf.cmd} }`);
+
+            if (!conf.promise) {
+                try {
+                    //conf.promise = sys.promiseCreate(f);
+                    //await conf.promise;
+                } catch (e) {
+                    s.l(e);
+                } finally {
+                    delete conf.promise;
+                }
+            }
+
+        }
+    }
+
 })();
