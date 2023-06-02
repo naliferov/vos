@@ -210,6 +210,9 @@
 
             const es = new EventSource('/stream');
             es.onmessage = event => {
+
+                s.l(event);
+
                 let data = {};
                 try {
                     data = JSON.parse(event.data);
