@@ -3,7 +3,7 @@
 Ra is a virtual operating system. It uses Node.js and browser user interface.
 
 ## Installation
-* clone repository to your compoter;
+* clone repository to your device;
 * go to repository dir
 * make npm install;
 
