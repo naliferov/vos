@@ -19,6 +19,7 @@
 
             //add persistence chain for every attribute like checked and etc
             this.automaticScroll = new v({ tagName: 'input' });
+            this.automaticScroll.setAttr('name', 'automaticScroll');
             this.automaticScroll.setAttr('type', 'checkbox');
             this.automaticScroll.setAttr('checked', 'true');
 
@@ -28,6 +29,7 @@
             const consoleCmd = new v({ tagName: 'input', class: ['nooutline', 'consoleCmd'] });
             this.consoleCmd = consoleCmd;
             consoleCmd.setAttr('placeholder', 'cmd');
+            consoleCmd.setAttr('name', 'cmdInput');
             consoleCmd.on('keydown', (e) => {
                 if (e.key !== 'Enter') return;
                 const v = e.target.value;

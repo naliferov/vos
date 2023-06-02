@@ -1,38 +1,11 @@
 () => {
     return class GUI {
 
-        async globals() {
-            globalThis.e = new Proxy(() => { }, {
-                apply(target, thisArg, args) {
-                    const handler = args[0];
-                    const data = args[1];
-                    if (s.sys.eventHandlers[handler]) {
-                        return s.sys.eventHandlers[handler](data);
-                    }
-                },
-                set(target, k, v) {
-                    s.sys.eventHandlers[k] = v;
-                    return true;
-                }
-            });
-            s.def('e', e);
-        }
-
         async start() {
-            await this.globals();
-
             //todo reactivity for deps and realtime updates
             this.http = new (await s.f('sys.httpClient'));
             this.v = await s.f('sys.ui.view');
 
-            s.sys.proxyS.set = (obj, prop, val) => {
-                if (prop === 'isTerminalShowed') {
-                    if (val) localState.set('isTerminalShowed', 1)
-                    else localState.del('isTerminalShowed');
-                    return false;
-                }
-                return Reflect.set(obj, prop, val);
-            }
             // const baseUrl = document.location.protocol + '//' + document.location.host;
             // require.config({ paths: { 'vs': baseUrl + '/node_modules/monaco-editor/min/vs' }});
             // window.MonacoEnvironment = {
@@ -56,8 +29,6 @@
             input.onResize(e => s.e('recalcDimensions'));
             this.input = input;
             document.body.addEventListener('touchstart', e => e.preventDefault());
-
-            s.sys.eventHandlers = {};
 
             e['>'] = args => {
                 let [v1, v2, index] = args;
@@ -225,13 +196,9 @@
             this.mainContainer = mainContainer;
             e('>', [mainContainer, app]);
 
-            //setWidth and height of mainContainer
-
             const appsManager = new (await s.f('sys.apps.GUI.appsManager'));
-
             try {
                 await appsManager.init(mainContainer);
-
             } catch (e) {
                 alert(e.toString() + e.stack);
             }

@@ -15,7 +15,7 @@
         value: (o, k, v) => Object.defineProperty(o, k, { writable: true, configurable: true, enumerable: false, value: v })
     });
     s.def('l', console.log);
-    s.def('find', id => s.findByArray(Array.isArray(id) ? id : id.split('.')));
+    s.def('find', path => s.findByArray(Array.isArray(path) ? path : path.split('.')));
     s.def('findByArray', id => {
         let node = s;
         for (let i = 0; i < id.length; i++) {
@@ -27,10 +27,10 @@
         }
         return node;
     });
-    s.def('findParentAndK', id => {
+    s.def('findParentAndK', path => {
         return {
-            parent: id.length === 1 ? s : s.find(id.slice(0, -1)),
-            k: id.at(-1)
+            parent: path.length === 1 ? s : s.find(path.slice(0, -1)),
+            k: path.at(-1)
         };
     });
     s.def('makePath', id => {
@@ -46,21 +46,15 @@
         }
         return node;
     });
-    s.def('f', (id, ...args) => {
-        try {
-            let node = s.find(id);
-            if (!node || !node.js) {
-                console.log(`js not found by id [${id}]`);
-                return;
-            }
-            if (!node[s.sys.SYMBOL_FN]) {
-                node[s.sys.SYMBOL_FN] = eval(node.js);
-            }
-            return node[s.sys.SYMBOL_FN](...args);
-        } catch (e) {
-            console.error(id, e);
-        }
+
+    s.def('setPath', (path, v) => {
+        //todo need func resolve path from str and array;
+        const pathArr = Array.isArray(path) ? path : path.split('.');
+        const { parent, k } = s.findParentAndK(pathArr);
+
+        if (parent && k && v) parent[k] = v;
     });
+    s.def('sync', (o1, o2) => { });
     s.def('merge', (o1, o2) => {
 
         for (let k in o2) {
@@ -83,6 +77,45 @@
             o1[k] = o2[k];
         }
     });
+    s.def('f', (id, ...args) => {
+        try {
+            let node = s.find(id);
+            if (!node || !node.js) {
+                console.log(`js not found by id [${id}]`);
+                return;
+            }
+            if (!node[s.sys.SYMBOL_FN]) {
+                node[s.sys.SYMBOL_FN] = eval(node.js);
+            }
+            return node[s.sys.SYMBOL_FN](...args);
+        } catch (e) {
+            console.error(id, e);
+        }
+    });
+
+    //GLOBAL PUB SUB
+    s.sys.eventHandlers = {};
+    globalThis.e = new Proxy(() => { }, {
+        apply(target, thisArg, args) {
+            const handler = args[0];
+            const data = args[1];
+            if (s.sys.eventHandlers[handler]) {
+                return s.sys.eventHandlers[handler](data);
+            }
+        },
+        set(target, k, v) {
+            s.sys.eventHandlers[k] = v;
+            return true;
+        }
+    });
+    s.def('pub', () => { });
+    s.def('sub', (k, v) => s.sys.eventHandlers[k] = v);
+    s.def('unsub', () => { //todo automatic sub, unsub
+        //s.sys.eventHandlers[k] = v;
+    });
+    s.def('e', e);
+    //sub создает подписку как на путь в s, а и на путь в папке state
+    //объект также может находится на других нодах, а не на текущей тогда в object._sys_ указывается нода из s.net.nodeName
 
     if (typeof window !== 'undefined') {
 
@@ -109,53 +142,84 @@
         try { await s.nodeFS.access(path); return true; }
         catch { return false; }
     });
-    sys.getRandStr = length => {
-        const alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_-+=<>?';
-        const password = [];
-        for (let i = 0; i < length; i++) {
-            const randomIndex = s.nodeCrypto.randomInt(0, alphabet.length);
-            password.push(alphabet.charAt(randomIndex));
+    s.def('cpToDisc', async (path, v = null) => {
+
+        let pathArr = path;
+        //todo this construction is repeating in several places
+        if (!Array.isArray(pathArr)) pathArr = pathArr.split('.');
+
+        //todo same code below. refactor and remove duplicate
+        const dir = `state/${pathArr.slice(0, -1).join('/')}`;
+        let file = `${dir}/${pathArr.at(-1)}.`;
+
+        if (!await s.fsAccess(dir)) return;
+        if (!v) v = s.find(pathArr);
+        if (!v) return;
+
+        if (typeof v === 'object' && v !== null) {
+            file += 'json';
+            v = JSON.stringify(v);
+        } else {
+            file += 'txt';
+            v = String(v);
         }
-        return password.join('');
+        await s.nodeFS.writeFile(file, v);
+    });
+    s.def('cpFromDisc', async (path, format = 'json') => {
+
+        let pathArr = path;
+        if (!Array.isArray(pathArr)) pathArr = pathArr.split('.');
+
+        const dir = `state/${pathArr.slice(0, -1).join('/')}`;
+        const file = `${dir}/${pathArr.at(-1)}.${format}`;
+
+        if (!await s.fsAccess(file)) return;
+
+        const str = (await s.nodeFS.readFile(file, 'utf8')).trim();
+        if (!str) return;
+
+        if (format === 'json') {
+            s.setPath(path, JSON.parse(str));
+        } else if (format === 'txt') {
+            s.setPath(path, str);
+        }
+    });
+    sys.getRandStr = length => {
+        const symbols = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_-+=<>?';
+        const str = [];
+        for (let i = 0; i < length; i++) {
+            const randomIndex = s.nodeCrypto.randomInt(0, symbols.length);
+            str.push(symbols.charAt(randomIndex));
+        }
+        return str.join('');
+    }
+    sys.getSecrets = () => s.secrets;
+    sys.getNetToken = () => {
+        if (!sys.netId || !s.secrets) return;
+        if (s.secrets.net) {
+            return s.secrets.net[sys.netId];
+        }
     }
 
     //SECRETS
-    const secretsFName = 'state/secrets.json';
-    if (!await s.fsAccess(secretsFName)) {
-        await s.nodeFS.writeFile(secretsFName, JSON.stringify({ netNodes: {}, users: {} }));
+    //todo add binding between s and state dir on disc
+    if (!s.secrets) await s.cpFromDisc('secrets');
+    if (!s.secrets) {
+        s.def('secrets', { net: {}, users: {} });
+        await s.cpToDisc('secrets'); //todo sync to disc can be automatic
     }
-    sys.getSecrets = async () => JSON.parse(await s.nodeFS.readFile(secretsFName, 'utf8'));
-    sys.getNetToken = () => {
-        if (!sys.netId || !s.secrets) return;
-        return s.secrets.netNodes[sys.netId];
-    }
-    if (!s.secrets) s.def('secrets', await s.sys.getSecrets());
-
     //NET ID
-    const netIdFName = 'state/netId.txt';
-
-    if (!sys.netId) { //todo watcher, controll of watchers from UI
-
-        if (!await s.fsAccess(netIdFName)) {
-            await s.nodeFS.writeFile(netIdFName, 'defaultNetId');
-        }
-        const netId = (await s.nodeFS.readFile(netIdFName, 'utf8')).trim();
-        s.defObjectProp(sys, 'netId', netId);
-
-        const netNodesSecrets = s.secrets.netNodes;
-        if (sys.netId) {
-            s.defObjectProp(sys, 'token', netNodesSecrets[sys.netId]);
-        }
+    if (!sys.netId) await s.cpFromDisc('sys.netId', 'txt');
+    if (!sys.netId) {
+        sys.netId = 'defaultNetId';
+        await s.cpToDisc('sys.netId');
     }
-
     //CREATE SECRET FOR NET ID IF NOT EXISTS
     if (sys.netId && !sys.getNetToken()) {
-        const token = sys.getRandStr(18);
-        s.secrets.netNodes[sys.netId] = token;
-        await s.copyToDisc('secrets');
+        s.secrets.net[sys.netId] = sys.getRandStr(25);
+        await s.cpToDisc('secrets');
     }
     if (!sys.netUpdateIds) s.defObjectProp(sys, 'netUpdateIds', new Map);
-
 
     //LOOP
     if (!s.loop) {
@@ -184,6 +248,7 @@
     }
     if (!s.loop.isWorking) s.loop.start();
 
+
     if (s.sys.logger) {
         s.def('http', new (await s.f('sys.httpClient')));
         s.def('log', new (await s.f('sys.logger')));
@@ -198,60 +263,6 @@
             return true;
         }
         return false;
-    });
-
-    //todo add this to sys
-    s.def('serialize', (object, path = '') => {
-        const dump = {};
-        for (let k in object) {
-            if (k === 'undefined') continue;
-
-            const v = object[k];
-            const t = typeof v;
-
-            if (t === 'function') {
-                dump[k] = { js: v.toString() };
-            } else if (t === 'boolean' || t === 'string' || t === 'number') {
-                dump[k] = v;
-            } else if (t === 'object') {
-                if (v === null || Array.isArray(v)) {
-                    dump[k] = v;
-                } else {
-                    dump[k] = s.createObjectDump(v, path + '.' + k);
-                }
-            }
-            else if (t === 'symbol' || t === 'undefined') { }
-            else {
-                s.l('unknown object type', path, t, v);
-            }
-        }
-        return dump;
-    });
-    s.def('copyToDisc', async (path, v = null) => {
-
-        let pathArr = path;
-        if (!Array.isArray(pathArr)) {
-            pathArr = pathArr.split('.');
-        }
-        const dir = `state/${pathArr.slice(0, -1).join('/')}`;
-        const file = `${dir}/${pathArr.at(-1)}.json`;
-
-        if (await s.fsAccess(dir)) {
-            if (!v) v = s.find(pathArr);
-            await s.nodeFS.writeFile(file, JSON.stringify(v));
-        }
-    });
-    s.def('copyStateToDisc', () => {
-        if (s.dumping) return;
-        s.def('dumping', setTimeout(async () => {
-            s.l('<< memory dump', new Date);
-
-            const paths = ['sys']; //'net',
-            for (let i = 0; i < paths.length; i++) await s.copyToDisc(paths[i]);
-            //secrets.json
-            s.l('>> dump created');
-            s.dumping = 0;
-        }, 1000));
     });
     s.def('syncJsScripts', async (node, path) => {
 
@@ -293,7 +304,7 @@
         }
         //delete what not exists in state
         s.merge(currentState, state);
-        s.l('setUpdate', path, Object.keys(state).length);
+        s.l('stateUpdatePath', path, Object.keys(state).length);
     }
     if (!s.connectedSSERequests) s.def('connectedSSERequests', new Map);
 
@@ -485,11 +496,11 @@
                 if (!s.sys.rqStateUpdate) {
                     rs.s('Server state is not ready.'); return;
                 }
-                //todo path on dysc js, css
+                //todo path on dysc js, css or move it inside sys.rqStateUpdate
                 await s.f('sys.rqStateUpdate', rq, rs);
                 //send updates to frontend
             },
-            'POST:/merge': async () => {
+            'POST:/smerge': async () => {
                 if (!s.sys.rqAuthenticate(rq)) {
                     rs.writeHead(403).end('denied');
                     return;
@@ -504,11 +515,10 @@
                 }
                 //todo ability to merge even distributed data
                 s.merge(node, v);
-                await s.copyToDisc(path, node);
+                await s.cpToDisc(path, node);
                 rs.s('ok');
             },
             'POST:/sign/in': async () => {
-                //todo add rate limit
                 const { token } = await s.sys.rqParseBody(rq);
                 if (!token || typeof token !== 'string') {
                     rs.writeHead(400).end('Token is invalid.');
@@ -645,7 +655,9 @@
                     if (tNode === 'object') node.js = js;
                     delete node[s.sys.SYMBOL_FN];
 
-                    s.copyStateToDisc();
+                    //for detect path use scriptsDirExists
+                    await s.cpToDisc('sys');
+
                 } catch (e) { s.log.error(e.toString(), e.stack); }
             }
         }
@@ -672,6 +684,9 @@
     }
 
     if (sys.netId && !s.net[sys.netId]) s.net[sys.netId] = {};
+
+
+    if (!s.net[sys.netId]) return;
 
     const netCmds = s.net[sys.netId].cmds;
     if (!netCmds) return;

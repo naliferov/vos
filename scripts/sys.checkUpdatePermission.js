@@ -4,6 +4,10 @@ async (path, userName, user) => {
     let perms = user?._sys_?.permissions;
     if (!perms) perms = {};
 
+    if (path[0] === 'secrets') {
+        return "You can't change secrets.";
+    }
+
     if (path[0] === 'users') {
 
         if (path[1] !== userName) {
