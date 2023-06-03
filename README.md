@@ -8,7 +8,12 @@ Ra is a virtual operating system. It uses Node.js and browser user interface.
 * make npm install;
 
 ## Running
-node index.js &> index.log
+```node index.js```
+
+If evething is ok, navigate to http://127.0.0.1:8080
+
+if you want to see log in Terminal app in browser use other cmd:
+```node index.js &> index.log```
 
 ## Main features
 * Data storage and editing

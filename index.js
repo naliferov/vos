@@ -46,7 +46,6 @@
         }
         return node;
     });
-
     s.def('setPath', (path, v) => {
         //todo need func resolve path from str and array;
         const pathArr = Array.isArray(path) ? path : path.split('.');
@@ -193,32 +192,35 @@
         }
         return str.join('');
     }
-    sys.getSecrets = () => s.secrets;
     sys.getNetToken = () => {
-        if (!sys.netId || !s.secrets) return;
-        if (s.secrets.net) {
-            return s.secrets.net[sys.netId];
-        }
+        if (!sys.netId) return;
+        if (!s.net[sys.netId]) return;
+
+        return s.net[sys.netId].token;
     }
 
-    //SECRETS
-    //todo add binding between s and state dir on disc
-    if (!s.secrets) await s.cpFromDisc('secrets');
-    if (!s.secrets) {
-        s.def('secrets', { net: {}, users: {} });
-        await s.cpToDisc('secrets'); //todo sync to disc can be automatic
-    }
-    //NET ID
+    //DEFAULT NET
     if (!sys.netId) await s.cpFromDisc('sys.netId', 'txt');
     if (!sys.netId) {
         sys.netId = 'defaultNetId';
         await s.cpToDisc('sys.netId');
     }
-    //CREATE SECRET FOR NET ID IF NOT EXISTS
-    if (sys.netId && !sys.getNetToken()) {
-        s.secrets.net[sys.netId] = sys.getRandStr(25);
-        await s.cpToDisc('secrets');
+    if (sys.netId && !s.net[sys.netId]) {
+        s.net[sys.netId] = {};
+        s.defObjectProp(s.net[sys.netId], 'token', sys.getRandStr(27));
+        await s.cpToDisc('net');
     }
+
+    //CREATE ROOT USER
+    if (s.f('sys.isEmptyObject', s.users)) {
+        s.users.root = { _sys_: {} };
+        s.defObjectProp(s.users.root._sys_, 'password', sys.getRandStr(25));
+
+        await s.nodeFS.writeFile('state/rootPassword.txt', s.users.root._sys_.password);
+    }
+
+    //s.l(s.users.root._sys_.password);;
+
     if (!sys.netUpdateIds) s.defObjectProp(sys, 'netUpdateIds', new Map);
 
     //LOOP
@@ -405,8 +407,8 @@
         if (rq.pathname.includes('..')) {
             rs.writeHead(403).end('Path include ".." denied.'); return;
         }
-        if (rq.pathname.toLowerCase().includes('secrets.json')) {
-            rs.writeHead(403).end('denied secrets.json'); return;
+        if (rq.pathname.toLowerCase().startsWith('/state/')) {
+            rs.writeHead(403).end('Access to state dir is denied.'); return;
         }
         rs.s = (v, contentType) => {
             const s = (value, type) => rs.writeHead(200, { 'Content-Type': type }).end(value);
@@ -500,38 +502,34 @@
                 await s.f('sys.rqStateUpdate', rq, rs);
                 //send updates to frontend
             },
-            'POST:/smerge': async () => {
-                if (!s.sys.rqAuthenticate(rq)) {
-                    rs.writeHead(403).end('denied');
-                    return;
-                }
-                const { path, v } = await s.sys.rqParseBody(rq);
-                let node = s.find(path);
-                if (!node) node = s.makePath(path);
-
-                if (typeof v !== 'object' || v === null) {
-                    rs.writeHead(400).end('v is not object');
-                    return;
-                }
-                //todo ability to merge even distributed data
-                s.merge(node, v);
-                await s.cpToDisc(path, node);
-                rs.s('ok');
-            },
             'POST:/sign/in': async () => {
-                const { token } = await s.sys.rqParseBody(rq);
-                if (!token || typeof token !== 'string') {
+
+                const { username, password } = await s.sys.rqParseBody(rq);
+                if (!username || typeof username !== 'string') {
+                    rs.writeHead(400).end('userName is invalid.');
+                    return;
+                }
+                if (!password || typeof password !== 'string') {
                     rs.writeHead(400).end('Token is invalid.');
                     return;
                 }
-                const { users } = await s.sys.getSecrets();
-                if (!users[token]) {
-                    rs.writeHead(404).end('User not found.');
+                const user = s.users[username];
+                const userPassword = user._sys_.password;
+
+                if (!user || !userPassword) {
+                    rs.writeHead(404).end('User not found or password not set.');
+                    return;
+                }
+                if (password !== userPassword) {
+                    rs.writeHead(401).end('Password is incorrect.');
                     return;
                 }
                 rs.writeHead(200, {
-                    'Set-Cookie': `token=${token}; Path=/; Max-Age=2580000; SameSite=Strict; Secure; HttpOnly`,
-                    'Content-Type': 'text/plain'
+                    'Content-Type': 'text/plain',
+                    'Set-Cookie': [
+                        `username=${username}; Path=/; Max-Age=2580000; SameSite=Strict; Secure; HttpOnly`,
+                        `password=${password}; Path=/; Max-Age=2580000; SameSite=Strict; Secure; HttpOnly`
+                    ],
                 }).end('ok');
             },
             'POST:/sign/out': async () => {
@@ -541,15 +539,21 @@
                 }).end('ok');
             },
             'GET:/sign/user': async () => {
-                let { token } = s.sys.rqGetCookies(rq);
-                if (!token) {
+                let { username, password } = s.sys.rqGetCookies(rq);
+                if (!username || !password) {
                     rs.s({ user: null }); return;
                 }
-                const { users } = await s.sys.getSecrets();
-                if (!users[token]) {
+                if (typeof username !== 'string' || typeof password !== 'string') {
                     rs.s({ user: null }); return;
                 }
-                rs.s({ user: { userName: users[token] } });
+                const user = s.users[username];
+                if (!user) {
+                    rs.s({ user: null }); return;
+                }
+                if (password !== user._sys_.password) {
+                    rs.s({ user: null }); return;
+                }
+                rs.s({ user: { username } });
             },
             'POST:/uploadFile': async () => {
                 if (!rq.isLocal) { rs.writeHead(403).end('denied'); return; }
@@ -561,9 +565,7 @@
             },
         }
 
-        if (!rq.mp.startsWith('GET:/module.js')) {
-            if (s.sys.rqResolveStatic && await s.sys.rqResolveStatic(rq, rs)) return;
-        }
+        if (s.sys.rqResolveStatic && await s.sys.rqResolveStatic(rq, rs)) return;
         if (m[rq.mp]) {
             try { await m[rq.mp](); }
             catch (e) {
@@ -682,9 +684,6 @@
             })();
         });
     }
-
-    if (sys.netId && !s.net[sys.netId]) s.net[sys.netId] = {};
-
 
     if (!s.net[sys.netId]) return;
 

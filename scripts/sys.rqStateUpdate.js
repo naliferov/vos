@@ -1,13 +1,39 @@
 async (rq, rs) => {
-    let { token } = s.sys.rqGetCookies(rq);
-    if (!token) {
-        rs.writeHead(403).end('Access denied. userToken not found.'); return;
-    }
-    const netToken = s.sys.getNetToken();
-    if (!netToken) {
-        rs.writeHead(500).end('netToken is not defined.'); return;
+    let { username, password, netToken } = s.sys.rqGetCookies(rq);
+
+    //AUTH
+    let sysNetToken;
+    let user;
+
+    if (netToken) {
+
+        sysNetToken = s.sys.getNetToken();
+        if (!sysNetToken) {
+            rs.writeHead(500).end('netToken is not defined.'); return;
+        }
+        if (netToken !== sysNetToken) {
+            rs.writeHead(401).end('Incorrect netToken.'); return;
+        }
+
+    } else {
+        if (!username || !password) {
+            rs.writeHead(401).end('username or password is empty.'); return;
+        }
+        user = s.users[username];
+        if (!user) {
+            rs.writeHead(404).end('user not found.'); return;
+        }
+        if (!user._sys_.password) {
+            rs.writeHead(500).end('password is not set.'); return;
+        }
+        if (password !== user._sys_.password) {
+            rs.writeHead(401).end('Password is incorrect.');
+            return;
+        }
     }
 
+
+    //todo use cpFromDisc instead
     const loadFromDisk = async path => {
         const isUserSpaceUpdate = path[0] === 'users' && path[1] && path[1].length > 0;
         let username = path[1];
@@ -116,17 +142,7 @@ async (rq, rs) => {
         return true;
     }
 
-    const isSysToken = netToken === token;
-    const { users } = await s.sys.getSecrets();
-
-    let userName = users[token];
-    if (userName) await loadUserByUsername(userName);
-
-    if (!isSysToken && !userName) {
-        rs.writeHead(403).end('Sys token or user not found.');
-        return;
-    }
-
+    //if (userName) await loadUserByUsername(userName);
     //rq.headers['content-type'] === 'application/octet-stream' && rq.headers['filename'] && rq.headers['path'];
 
     const { cmds, updateId } = await s.sys.rqParseBody(rq);
@@ -140,8 +156,6 @@ async (rq, rs) => {
         return;
     }
 
-    const user = s.users[userName];
-
     const processCmd = async (update) => {
         if (!s.f('sys.isObject', update)) {
             rs.s(`cmd is not valid ${update}.`);
@@ -151,23 +165,21 @@ async (rq, rs) => {
 
         //validate pathes, or oldPath, newPath
 
-        let result = isSysToken;
-        if (!result) {
+        if (!netToken) {
             if (oldPath && newPath) {
-                const checkA = await s.f('sys.checkUpdatePermission', oldPath, userName, user);
-                const checkB = await s.f('sys.checkUpdatePermission', newPath, userName, user);
+                const checkA = await s.f('sys.checkUpdatePermission', oldPath, username, user);
+                const checkB = await s.f('sys.checkUpdatePermission', newPath, username, user);
                 if (checkA !== true || checkB !== true) {
                     rs.writeHead(403).end(`Access denied. ${checkA}`);
                     return;
                 }
-                result = true;
             } else {
-                result = await s.f('sys.checkUpdatePermission', path, userName, user);
+                let result = await s.f('sys.checkUpdatePermission', path, username, user);
+                if (result !== true) {
+                    rs.writeHead(403).end(`Access denied. ${result}`);
+                    return;
+                }
             }
-        }
-        if (result !== true) {
-            rs.writeHead(403).end(`Access denied. ${result}`);
-            return;
         }
 
         if (path) {
@@ -209,5 +221,5 @@ async (rq, rs) => {
         if (result !== true) return;
     }
     rs.s('ok');
-    await s.f('sys.netUpdate', { cmds, updateId }, token, true);
+    //await s.f('sys.netUpdate', { cmds, updateId });
 }

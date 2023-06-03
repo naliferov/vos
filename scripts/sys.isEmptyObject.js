@@ -1,1 +1,4 @@
-obj => Object.keys(obj).length === 0
+obj => {
+    for (let k in obj) return false;
+    return true;
+}
