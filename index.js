@@ -3,8 +3,10 @@
     s.net ??= {}; s.space ??= {}; s.sys ??= {}; s.users ??= {};
     const sys = s.sys;
 
-    sys.SYMBOL_FN ??= Symbol('fn');
-    sys.SYMBOL_IS_EMPTY_NODE ??= Symbol('isEmptyNode');
+    sys.sym ??= {};
+    sys.sym.FN ??= Symbol('fn');
+    sys.sym.IS_EMPTY ??= Symbol('isEmptyNode');
+    sys.sym.IS_LOADED_FROM_DISC ??= Symbol('isLoadedFromDisc');
 
     Object.defineProperty(s, 'def', {
         writable: true, configurable: true, enumerable: false,
@@ -83,10 +85,10 @@
                 console.log(`js not found by id [${id}]`);
                 return;
             }
-            if (!node[s.sys.SYMBOL_FN]) {
-                node[s.sys.SYMBOL_FN] = eval(node.js);
+            if (!node[sys.sym.FN]) {
+                node[sys.sym.FN] = eval(node.js);
             }
-            return node[s.sys.SYMBOL_FN](...args);
+            return node[sys.sym.FN](...args);
         } catch (e) {
             console.error(id, e);
         }
@@ -141,7 +143,7 @@
         try { await s.nodeFS.access(path); return true; }
         catch { return false; }
     });
-    s.def('cpToDisc', async (path, v = null) => {
+    s.def('cpToDisc', async (path, v = null, hiddenProps = {}) => {
 
         let pathArr = path;
         //todo this construction is repeating in several places
@@ -157,6 +159,18 @@
 
         if (typeof v === 'object' && v !== null) {
             file += 'json';
+            if (hiddenProps.each && hiddenProps.each) {
+                const clone = structuredClone(v);
+                for (let k in v) {
+                    clone[k][hiddenProps.each] = v[k][hiddenProps.each];
+                }
+                v = clone;
+            } else if (hiddenProps.one) {
+                //todo one can be dot separated
+                const clone = structuredClone(v);
+                clone[hiddenProps.one] = v[hiddenProps.one];
+                v = clone;
+            }
             v = JSON.stringify(v);
         } else {
             file += 'txt';
@@ -164,7 +178,7 @@
         }
         await s.nodeFS.writeFile(file, v);
     });
-    s.def('cpFromDisc', async (path, format = 'json') => {
+    s.def('getFromDisc', async (path, format = 'json') => {
 
         let pathArr = path;
         if (!Array.isArray(pathArr)) pathArr = pathArr.split('.');
@@ -175,14 +189,43 @@
         if (!await s.fsAccess(file)) return;
 
         const str = (await s.nodeFS.readFile(file, 'utf8')).trim();
-        if (!str) return;
 
         if (format === 'json') {
-            s.setPath(path, JSON.parse(str));
-        } else if (format === 'txt') {
-            s.setPath(path, str);
+            return JSON.parse(str);
         }
+        return str;
     });
+    s.def('cpFromDisc', async (path, format = 'json', hiddenProps = {}) => {
+        const v = await s.getFromDisc(path, format);
+        if (!v) return;
+        s.setPath(path, v);
+    });
+    s.def('syncFromDisc', async (path, format = 'json', hiddenProps = {}) => {
+
+        const state = await s.getFromDisc(path, format);
+        if (!state) return;
+
+        const currentState = s.find(path);
+        for (let k in currentState) {
+            if (!state[k]) delete currentState[k];
+        }
+        //delete what not exists in state
+        s.merge(currentState, state);
+        s.l('syncFromDisc', path, Object.keys(state).length);
+    });
+
+    //LOAD NET, SPACE, SYS
+    if (!s.net[sys.sym.IS_LOADED_FROM_DISC]) {
+        await s.cpFromDisc('net', 'json', { each: 'token' });
+        s.net[sys.sym.IS_LOADED_FROM_DISC] = 1;
+    }
+    if (!s.sys[sys.sym.IS_LOADED_FROM_DISC]) {
+        await s.cpFromDisc('sys');
+        s.sys[sys.sym.IS_LOADED_FROM_DISC] = 1;
+    }
+
+    //todo try to load root user from disc
+
     sys.getRandStr = length => {
         const symbols = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_-+=<>?';
         const str = [];
@@ -199,8 +242,12 @@
         return s.net[sys.netId].token;
     }
 
+
     //DEFAULT NET
-    if (!sys.netId) await s.cpFromDisc('sys.netId', 'txt');
+    if (!sys.netId) {
+        await s.cpFromDisc('sys.netId', 'txt', { one: 'netId' });
+        //todo make hidden sys.netId hidden; and also add hidding of net tokens
+    }
     if (!sys.netId) {
         sys.netId = 'defaultNetId';
         await s.cpToDisc('sys.netId');
@@ -208,7 +255,7 @@
     if (sys.netId && !s.net[sys.netId]) {
         s.net[sys.netId] = {};
         s.defObjectProp(s.net[sys.netId], 'token', sys.getRandStr(27));
-        await s.cpToDisc('net');
+        await s.cpToDisc('net', null, { each: 'token' });
     }
 
     //CREATE ROOT USER
@@ -218,8 +265,6 @@
 
         await s.nodeFS.writeFile('state/rootPassword.txt', s.users.root._sys_.password);
     }
-
-    //s.l(s.users.root._sys_.password);;
 
     if (!sys.netUpdateIds) s.defObjectProp(sys, 'netUpdateIds', new Map);
 
@@ -249,7 +294,6 @@
         s.process.on('uncaughtException', e => console.log('[[uncaughtException]]', e.stack));
     }
     if (!s.loop.isWorking) s.loop.start();
-
 
     if (s.sys.logger) {
         s.def('http', new (await s.f('sys.httpClient')));
@@ -299,14 +343,14 @@
             }
         }
     });
-    s.sys.stateUpdatePath = (path, state) => {
+    s.sys.syncPath = (path, state) => {
         const currentState = s.find(path);
         for (let k in currentState) {
             if (!state[k]) delete currentState[k];
         }
         //delete what not exists in state
         s.merge(currentState, state);
-        s.l('stateUpdatePath', path, Object.keys(state).length);
+        s.l('syncPath', path, Object.keys(state).length);
     }
     if (!s.connectedSSERequests) s.def('connectedSSERequests', new Map);
 
@@ -407,7 +451,7 @@
         if (rq.pathname.includes('..')) {
             rs.writeHead(403).end('Path include ".." denied.'); return;
         }
-        if (rq.pathname.toLowerCase().startsWith('/state/')) {
+        if (rq.pathname.toLowerCase().includes('/state/')) {
             rs.writeHead(403).end('Access to state dir is denied.'); return;
         }
         rs.s = (v, contentType) => {
@@ -618,17 +662,6 @@
 
     const trigger = async () => {
         console.log('ONCE', new Date);
-
-        let paths = ['net', 'sys'];
-        for (let i = 0; i < paths.length; i++) {
-            const path = paths[i];
-            const fName = `state/${path}.json`;
-
-            if (await s.fsAccess(fName)) {
-                const state = JSON.parse(await s.nodeFS.readFile(fName, 'utf8'));
-                s.sys.stateUpdatePath(path, state);
-            }
-        }
 
         //controll of watchers from declarativeUI
         const scriptsDirExists = await s.fsAccess('scripts');

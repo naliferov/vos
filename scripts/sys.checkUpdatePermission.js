@@ -14,7 +14,9 @@ async (path, username, user) => {
         if (path[2] === '_sys_') {
             return "You can't change system data.";
         }
+
         return true;
+
     } else {
         if (perms.changeSys) return true;
 

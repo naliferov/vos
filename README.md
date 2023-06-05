@@ -1,6 +1,6 @@
-# Ra &middot; [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/naliferov/ra/blob/main/LICENSE)
+# VOS &middot; [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/naliferov/ra/blob/main/LICENSE)
 
-Ra is a virtual operating system. It uses Node.js and browser user interface.
+VOS is an acronym for virtual operating system. It uses Node.js and browser user interface.
 
 ## Installation
 * clone repository to your device;
@@ -25,4 +25,4 @@ if you want to see log in Terminal app in browser use other cmd:
 ## Contributing
 ### License
 
-Ra is [MIT licensed](./LICENSE).
+VOS is [MIT licensed](./LICENSE).

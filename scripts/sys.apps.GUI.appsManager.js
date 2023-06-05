@@ -6,17 +6,13 @@
             this.uiContainer = uiContainer;
             this.openedApps = [];
 
-            let openedApps = s.e('localState.get', 'openedApps');
-            if (!openedApps) return;
-            openedApps = JSON.parse(openedApps);
+            let lsOpenedApps = s.e('localState.get', 'openedApps'); //localStateOpenedApps
+            if (!lsOpenedApps) return;
+            lsOpenedApps = JSON.parse(lsOpenedApps);
 
-            if (!Array.isArray(openedApps)) {
-                openedApps = [];
-            }
+            for (let i = 0; i < lsOpenedApps.length; i++) {
 
-            for (let i = 0; i < openedApps.length; i++) {
-
-                const { appPath, dataPath, dimensions } = openedApps[i];
+                const { appPath, dataPath, dimensions } = lsOpenedApps[i];
 
                 let dataNode;
                 if (dataPath) {
@@ -62,6 +58,8 @@
             const appFrame = Object.create(s.f('sys.apps.GUI.appFrame'));
             await appFrame.init(appPath, dataNode, v);
             appFrame.setIndex(this.openedApps.length);
+
+            s.l(this.openedApps.length);
 
             e('>', [appFrame.getView(), this.uiContainer]);
 

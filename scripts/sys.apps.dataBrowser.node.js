@@ -126,7 +126,7 @@ async () => {
                     parentNode[path[path.length - 1]] = data;
                 }
             } else {
-                //this.dataNode.getData()[s.sys.SYMBOL_IS_EMPTY_NODE] = true;
+                //this.dataNode.getData()[s.sys.sym.IS_EMPTY] = true;
             }
         }
 
@@ -138,7 +138,7 @@ async () => {
 
             if (s.f('sys.isEmptyObject', v) || (Array.isArray(v) && v.length === 0)) {
 
-                if (!v[s.sys.SYMBOL_IS_EMPTY_NODE]) await this.requestData();
+                if (!v[s.sys.sym.IS_EMPTY]) await this.requestData();
             }
 
             v = this.dataNode.getData();
