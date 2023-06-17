@@ -50,6 +50,15 @@
             const vData = s.findParentAndKInNode(v, hiddenProps.one);
             s.defObjectProp(vData.parent, vData.k, vData.parent[vData.k]);
         }
+        if (hiddenProps.each) {
+            if (typeof v === 'object' && !Array.isArray(v)) {
+                for (let k in v) {
+                    const obj = v[k];
+                    const vData = s.findParentAndKInNode(obj, hiddenProps.each);
+                    s.defObjectProp(vData.parent, vData.k, vData.parent[vData.k]);
+                }
+            }
+        }
         parent[k] = v;
     });
     s.def('merge', (o1, o2) => {
@@ -123,6 +132,7 @@
             console.error(id, e);
         }
     });
+    s.def('isStr', str => typeof str === 'string');
 
     //GLOBAL PUB SUB
     sys.eventHandlers = {};
@@ -249,7 +259,7 @@
         return s.net[sys.netId].token;
     }
 
-    //LOAD NET, SPACE, SYS
+    //LOAD NET, SYS
     if (!s.net[sys.sym.IS_LOADED_FROM_DISC]) {
         await s.cpFromDisc('net', 'json', { each: 'token' });
         s.net[sys.sym.IS_LOADED_FROM_DISC] = 1;
@@ -272,7 +282,9 @@
     }
 
     //DEFAULT NET
-    if (!sys.netId) await s.cpFromDisc('sys.netId', 'txt', { prop: true });
+    if (!sys.netId) {
+        await s.cpFromDisc('sys.netId', 'txt', { prop: true });
+    }
     if (!sys.netId) {
         s.defObjectProp(sys, 'netId', 'defaultNetId');
         await s.cpToDisc('sys.netId');
@@ -285,16 +297,14 @@
     if (s.f('sys.isEmptyObject', s.users)) {
         await s.cpFromDisc('users.root', 'json', { one: '_sys_.password' });
 
-        //s.l(s.users.root._sys_.password);
         // if (!s.users.root) {
         //     s.users.root = { _sys_: {} };
         //     s.defObjectProp(s.users.root._sys_, 'password', sys.getRandStr(25));
         //     await s.cpToDisc('users.root', null, { one: '_sys_.password' });
         // }
     }
+
     if (!sys.netUpdateIds) s.defObjectProp(sys, 'netUpdateIds', new Map);
-
-
 
     //LOOP
     if (!s.loop) {
@@ -504,6 +514,10 @@
                 }
             },
             'GET:/': async () => {
+                if (!s.js) {
+                    rs.writeHead(500).end('server not ready');
+                    return;
+                }
                 //todo make html separate file, and same for css
                 rs.s(await s.f('sys.apps.GUI.html'), 'text/html')
             },
@@ -723,7 +737,7 @@
                 } catch (e) { s.log.error(e.toString(), e.stack); }
             }
         }
-        //if (s.server) s.server.listen(8080, () => console.log(`httpServer start port: 8080`));
+        if (s.server) s.server.listen(8080, () => console.log(`httpServer start port: 8080`));
     }
     s.def('trigger', async () => await trigger());
     if (s.once(2)) await trigger();

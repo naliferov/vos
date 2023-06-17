@@ -1,5 +1,6 @@
 async (rq, rs) => {
     let { username, password, netToken } = s.sys.rqGetCookies(rq);
+    const sys = s.sys;
 
     //AUTH
     let sysNetToken;
@@ -7,7 +8,7 @@ async (rq, rs) => {
 
     if (netToken) {
 
-        sysNetToken = s.sys.getNetToken();
+        sysNetToken = sys.getNetToken();
         if (!sysNetToken) {
             rs.writeHead(500).end('netToken is not defined.'); return;
         }
@@ -91,14 +92,14 @@ async (rq, rs) => {
         }
         return { node, k };
     }
-    const updateNode = (path, v) => {
+    const updateFn = (path, v) => {
         const { node, k } = getParentNodeAndKey(path);
         if (!node || !k) return;
 
         //todo check operation for Array
         if (k === 'js') {
             eval(v); //use parser or lister for check syntax
-            delete node[s.sys.SYMBOL_FN];
+            delete node[sys.sym.FN];
         }
         node[k] = v;
     }
@@ -108,6 +109,7 @@ async (rq, rs) => {
             s.l(`No node or k. oldPath [${oldPath}]`)
             return;
         }
+
         let parentNodeAndKey = getParentNodeAndKey(newPath);
         let node2 = parentNodeAndKey.node;
         let k2 = parentNodeAndKey.k;
@@ -118,11 +120,27 @@ async (rq, rs) => {
         node2[k2] = node[k];
         return { node, k };
     }
+    //todo prevent mv of array keys
+    const mv = (oldPath, newPath, sys) => {
+        const { node, k } = cp(oldPath, newPath);
+        delete node[k];
+
+        //todo rename sysId if necessary
+        if (oldPath.length !== 2 || newPath.length !== 2) {
+            return;
+        }
+        if (oldPath[0] === 'net' && s.isStr(oldPath[1]) &&
+            newPath[0] === 'net' && s.isStr(newPath[1]) &&
+            sys.netId && sys.netId === oldPath[1]
+        ) {
+            sys.netId = newPath[1];
+        }
+    }
     const rm = path => {
         const { node, k } = getParentNodeAndKey(path);
         if (!node || !k) return;
         delete node[k];
-        if (k === 'js') delete node[s.sys.SYMBOL_FN];
+        if (k === 'js') delete node[sys.sym.FN];
     }
     const checkSpaceLimit = (path, v, op) => {
 
@@ -145,9 +163,9 @@ async (rq, rs) => {
     //if (userName) await loadUserByUsername(userName);
     //rq.headers['content-type'] === 'application/octet-stream' && rq.headers['filename'] && rq.headers['path'];
 
-    const { cmds, updateId } = await s.sys.rqParseBody(rq);
+    const { cmds, updateId } = await sys.rqParseBody(rq);
 
-    if (updateId && s.sys.netUpdateIds.get(updateId)) {
+    if (updateId && sys.netUpdateIds.get(updateId)) {
         s.l(`Update already received before. [${updateId}]`);
         return;
     }
@@ -192,20 +210,16 @@ async (rq, rs) => {
             rs.writeHead(403).end(`Space limit reached.`);
             return;
         }
+
         //todo case with long arrays can be really slow, so need to make limits
         //todo case if it MAP or SET
-        if (op === 'rm') {
-            rm(path);
-        } else if (op === 'cp') {
-            //todo cp can make circular references, so need processing of circular references
-            //cp(oldPath, newPath);
-        } else if (op === 'mv') {
-            //todo prevent mv of array keys
-            const { node, k } = cp(oldPath, newPath);
-            delete node[k];
-        } else if (op === 'set' || op === 'up') {
-            updateNode(path, v);
-        }
+        //todo prevent move of not enumerable keys
+        //todo cp can make circular references, so need processing of circular references
+        //cp(oldPath, newPath);
+        if (op === 'rm') rm(path);
+        else if (op === 'cp') { }
+        else if (op === 'mv') mv(oldPath, newPath, sys);
+        else if (op === 'set' || op === 'up') updateFn(path, v);
 
         if (path) {
             await saveToDisk(path);

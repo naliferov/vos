@@ -23,7 +23,7 @@ async update => {
     for (let nodeName in s.net) {
 
         const node = s.net[nodeName];
-        if (!node.isActive || nodeName === s.sys.netId) {
+        if (!node.isActive || nodeName === sys.netId) {
             s.l(`netNode skip [${nodeName}]`); continue;
         }
         try {
