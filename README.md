@@ -1,6 +1,6 @@
 # VOS &middot; [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/naliferov/ra/blob/main/LICENSE)
 
-VOS is an acronym for virtual operating system. It uses Node.js and browser user interface.
+VOS is an acronym for virtual operating system. It uses Node.js and web browser.
 
 ## Installation
 * clone repository to your device
