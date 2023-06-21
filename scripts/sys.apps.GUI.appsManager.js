@@ -59,8 +59,6 @@
             await appFrame.init(appPath, dataNode, v);
             appFrame.setIndex(this.openedApps.length);
 
-            s.l(this.openedApps.length);
-
             e('>', [appFrame.getView(), this.uiContainer]);
 
             appFrame.getView().on('click', (e) => this.focusAppFrame(appFrame));

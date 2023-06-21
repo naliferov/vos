@@ -40,6 +40,8 @@
 
                 const usernameInput = new v({ tagName: 'input' });
                 usernameInput.setAttr('placeholder', 'username');
+                usernameInput.setAttr('name', 'username');
+                usernameInput.setAttr('autocomplete', 'given-name');
                 usernameInput.on('pointerdown', e => {
                     e.stopPropagation();
                 });
@@ -50,6 +52,8 @@
                 const passwordInput = new v({ tagName: 'input' });
                 passwordInput.setAttr('placeholder', 'password');
                 passwordInput.setAttr('type', 'password');
+                passwordInput.setAttr('name', 'password');
+
                 passwordInput.on('pointerdown', e => {
                     e.stopPropagation();
                 });

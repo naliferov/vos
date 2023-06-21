@@ -269,8 +269,8 @@
         sys[sys.sym.IS_LOADED_FROM_DISC] = 1;
     }
     //await s.cpFromDisc('sys'); s.loop.delay = 1000;
-
     //add this fn as js.toString();
+
     sys.getRandStr = length => {
         const symbols = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_-+=<>?';
         const str = [];
