@@ -280,6 +280,13 @@
         }
         return str.join('');
     }
+    sys.isEmptyDir = async (dir, ignore = []) => {
+        let list = await s.nodeFS.readdir(dir);
+        if (list.length === 0) return true;
+
+        list = list.filter(i => !ignore.includes(i));
+        return Boolean(list.length);
+    }
 
     //DEFAULT NET
     if (!sys.netId) {
@@ -294,7 +301,7 @@
         s.defObjectProp(s.net[sys.netId], 'token', sys.getRandStr(27));
         await s.cpToDisc('net', null, { each: 'token' });
     }
-    if (s.f('sys.isEmptyObject', s.users)) {
+    if (s.f('sys.isEmptyObject', s.users) && await sys.isEmptyDir('state/users', ['.gitignore'])) {
         await s.cpFromDisc('users.root', 'json', { one: '_sys_.password' });
 
         if (!s.users.root) {
@@ -534,17 +541,6 @@
                 });
                 rq.isLongRequest = true;
             },
-            // 'GET:/module.js': async () => {
-            //     const { id } = sys.rqParseQuery(rq);
-            //     if (!id) {
-            //         rs.writeHead(400).end('id is invalid.'); return;
-            //     }
-            //     const obj = s.find(id);
-            //     if (obj && obj.js) {
-            //         rs.setHeader('Content-Type', 'text/javascript');
-            //         rs.end('export default ' + obj.js);
-            //     }
-            // },
             'POST:/state': async () => {
                 const { path } = await sys.rqParseBody(rq);
                 if (!Array.isArray(path)) {
@@ -557,8 +553,9 @@
                 }
                 let node = s.find(path);
 
-                if (typeof node === 'object' && !Array.isArray(node) && Object.keys(node).length < 1) {
+                if (typeof node === 'object' && !Array.isArray(node)) {
 
+                    //appentToPropsNamesOfDirs by path
                     const pathStr = 'state/' + path.join('/');
                     if (await s.fsAccess(pathStr)) {
                         const list = await s.nodeFS.readdir(pathStr);
@@ -575,8 +572,7 @@
                         if (parent && k) parent[k] = node;
                     }
                 }
-                //todo get path info will be better for performance
-                //todo level of depth of object or array
+                //todo get path info will be better for performance and limit level of depth of object or array
                 rs.s(node);
             },
             'POST:/stateUpdate': async () => {
@@ -761,6 +757,8 @@
     if (!s.net[sys.netId]) return;
 
     const netCmds = s.net[sys.netId].cmds;
+
+    //s.l(netCmds);
     if (!netCmds) return;
 
     for (let i in netCmds) {
