@@ -285,7 +285,7 @@
         if (list.length === 0) return true;
 
         list = list.filter(i => !ignore.includes(i));
-        return Boolean(list.length);
+        return list.length === 0;
     }
 
     //DEFAULT NET
@@ -301,6 +301,7 @@
         s.defObjectProp(s.net[sys.netId], 'token', sys.getRandStr(27));
         await s.cpToDisc('net', null, { each: 'token' });
     }
+
     if (s.f('sys.isEmptyObject', s.users) && await sys.isEmptyDir('state/users', ['.gitignore'])) {
         await s.cpFromDisc('users.root', 'json', { one: '_sys_.password' });
 
