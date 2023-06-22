@@ -297,11 +297,11 @@
     if (s.f('sys.isEmptyObject', s.users)) {
         await s.cpFromDisc('users.root', 'json', { one: '_sys_.password' });
 
-        // if (!s.users.root) {
-        //     s.users.root = { _sys_: {} };
-        //     s.defObjectProp(s.users.root._sys_, 'password', sys.getRandStr(25));
-        //     await s.cpToDisc('users.root', null, { one: '_sys_.password' });
-        // }
+        if (!s.users.root) {
+            s.users.root = { _sys_: {} };
+            s.defObjectProp(s.users.root._sys_, 'password', sys.getRandStr(25));
+            await s.cpToDisc('users.root', null, { one: '_sys_.password' });
+        }
     }
 
     if (!sys.netUpdateIds) s.defObjectProp(sys, 'netUpdateIds', new Map);
@@ -757,8 +757,6 @@
             })();
         });
     }
-
-    return;
 
     if (!s.net[sys.netId]) return;
 
