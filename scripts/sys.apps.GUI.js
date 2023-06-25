@@ -30,6 +30,7 @@
             this.input = input;
             document.body.addEventListener('touchstart', e => e.preventDefault());
 
+            //place this path ">" in s namespace, or in s.sys with s.defProp, and then call with f
             e['>'] = args => {
                 let [v1, v2, index] = args;
 

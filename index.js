@@ -8,6 +8,10 @@
     sys.sym.IS_EMPTY ??= Symbol('isEmptyNode');
     sys.sym.IS_LOADED_FROM_DISC ??= Symbol('isLoadedFromDisc');
 
+    Object.defineProperty(s, 'd', {
+        writable: true, configurable: true, enumerable: false,
+        value: (k, v) => Object.defineProperty(s, k, { writable: true, configurable: true, enumerable: false, value: v })
+    });
     Object.defineProperty(s, 'def', {
         writable: true, configurable: true, enumerable: false,
         value: (k, v) => Object.defineProperty(s, k, { writable: true, configurable: true, enumerable: false, value: v })
@@ -16,13 +20,98 @@
         writable: true, configurable: true, enumerable: false,
         value: (o, k, v) => Object.defineProperty(o, k, { writable: true, configurable: true, enumerable: false, value: v })
     });
-    s.def('l', console.log);
-    s.def('makePath', id => {
-        const path = Array.isArray(id) ? id : id.split('.');
+    s.d('l', console.log);
+    s.d('isObject', d => typeof d === 'object' && !Array.isArray(d) && d !== null);
+    s.d('pathToArr', path => Array.isArray(path) ? path : path.split('.'));
+    s.d('find', (path, nodeForSearch) => {
         let node = s;
+        if (s.isObject(nodeForSearch)) node = nodeForSearch;
+
+        const pathArr = s.pathToArr(path);
+        return s.findByArray(pathArr, node);
+    })
+    s.d('findByArray', (path, nodeForSearch) => {
+        let node = s;
+        if (s.isObject(nodeForSearch)) node = nodeForSearch;
 
         for (let i = 0; i < path.length; i++) {
-            const k = path[i];
+            if (typeof node !== 'object' || node === null) {
+                s.l(`node not found: [${path}]`); return;
+            }
+            node = node[path[i]];
+        }
+        return node;
+    });
+    s.d('findParentAndK', (path, nodeForSearch) => {
+
+        const pathArr = s.pathToArr(path);
+        let node = s;
+        if (s.isObject(nodeForSearch)) node = nodeForSearch;
+
+        return {
+            parent: pathArr.length === 1 ? node : s.find(pathArr.slice(0, -1), node),
+            k: pathArr.at(-1)
+        };
+    });
+    s.d('f', (id, ...args) => {
+        try {
+            let node = s.find(id);
+            if (!node || !node.js) {
+                console.log(`js not found by id [${id}]`);
+                return;
+            }
+            if (!node[sys.sym.FN]) {
+                //node[sys.sym.FN] = eval(node.js);
+            }
+            return eval(node.js)(...args);
+        } catch (e) {
+            console.error(id, e);
+        }
+    });
+    s.d('stream', ({ path, type, handler }) => {
+
+        const stream = {
+            data: null,
+
+            changeHandlers: [],
+            watchers: {},
+            isWorking: false,
+            start: () => {
+                this.isWorking = true;
+            },
+            stop: () => {
+                this.isWorking = false;
+            },
+            set: (data) => { },
+            get: function () { return this.data },
+            connect(stream) { }
+        };
+        stream.start();
+
+        return stream
+    });
+    s.def('fsChangesStream', async path => {
+        return {
+            isStarted: false,
+            ac: new AbortController,
+            start: async function () {
+                if (this.isStarted) return;
+                this.generator = await s.nodeFS.watch(path, { signal: this.ac.signal });
+                for await (const e of this.generator) if (this.eventHandler) await this.eventHandler(e);
+                s.l('fsChangesStream STARTED');
+                this.isStarted = true;
+            },
+            stop: function () { this.ac.abort(); },
+            eventHandler: null,
+        }
+    });
+
+    s.d('create', (path, type) => {
+        let pathArr = Array.isArray(path) ? path : path.split('.');
+        let node = s;
+
+        for (let i = 0; i < pathArr.length; i++) {
+            const k = pathArr[i];
             if (typeof node[k] !== 'object' || node[k] === null) {
                 node[k] = {};
             }
@@ -30,38 +119,92 @@
         }
         return node;
     });
-    s.def('setPath', (path, v, hiddenProps = {}) => {
+    s.d('set', (path, v, hiddenProps = {}) => {
         //todo need func resolve path from str and array;
         const pathArr = Array.isArray(path) ? path : path.split('.');
         const { parent, k } = s.findParentAndK(pathArr);
 
         if (!parent || !k || !v) return;
 
+        //HIDE PROP LOGIC
         const hiddenPropsIsEmpty = Object.keys(hiddenProps).length === 0;
         if (hiddenPropsIsEmpty) {
-            parent[k] = v;
-            return;
+            parent[k] = v; return;
         }
         if (hiddenProps.prop) {
-            s.defObjectProp(parent, k, parent[k]);
-            return;
+            s.defObjectProp(parent, k, parent[k]); return;
         }
         if (hiddenProps.one) {
-            const vData = s.findParentAndKInNode(v, hiddenProps.one);
+            const vData = s.findParentAndK(hiddenProps.one, v);
             s.defObjectProp(vData.parent, vData.k, vData.parent[vData.k]);
+            parent[k] = v;
+            return;
         }
         if (hiddenProps.each) {
             if (typeof v === 'object' && !Array.isArray(v)) {
                 for (let k in v) {
                     const obj = v[k];
-                    const vData = s.findParentAndKInNode(obj, hiddenProps.each);
+                    const vData = s.findParentAndK(hiddenProps.each, obj);
+
                     s.defObjectProp(vData.parent, vData.k, vData.parent[vData.k]);
                 }
             }
         }
+
         parent[k] = v;
     });
-    s.def('merge', (o1, o2) => {
+    s.d('cp', (oldPath, newPath) => {
+        const { node, k } = getParentNodeAndKey(oldPath);
+        if (!node || !k) {
+            s.l(`No node or k. oldPath [${oldPath}]`)
+            return;
+        }
+
+        let parentNodeAndKey = getParentNodeAndKey(newPath);
+        let node2 = parentNodeAndKey.node;
+        let k2 = parentNodeAndKey.k;
+        if (!node2 || !k2) {
+            s.l(`No node2 or k2. newPath [${newPath}]`)
+            return;
+        }
+        node2[k2] = node[k];
+        return { node, k };
+    });
+    s.d('update', (path, v) => {
+
+        const pathArr = s.pathToArr(path);
+        const { parent, k } = s.findParentAndK(pathArr);
+        if (!parent || !k) return;
+
+        //todo check operation for Array
+        if (k === 'js') {
+            eval(v); //use parser or lister for check syntax
+            delete parent[sys.sym.FN];
+        }
+        parent[k] = v;
+    });
+    s.d('mv', (oldPath, newPath, sys) => {
+        const { node, k } = cp(oldPath, newPath);
+        delete node[k];
+
+        //todo rename sysId if necessary
+        if (oldPath.length !== 2 || newPath.length !== 2) {
+            return;
+        }
+        if (oldPath[0] === 'net' && s.isStr(oldPath[1]) &&
+            newPath[0] === 'net' && s.isStr(newPath[1]) &&
+            sys.netId && sys.netId === oldPath[1]
+        ) {
+            sys.netId = newPath[1];
+        }
+    });
+    s.d('rm', path => {
+        const { node, k } = s.findParentAndK(path);
+        if (!node || !k) return;
+        delete node[k];
+        if (k === 'js') delete node[sys.sym.FN];
+    });
+    s.d('merge', (o1, o2) => {
 
         for (let k in o2) {
             const v1 = o1[k];
@@ -83,56 +226,8 @@
             o1[k] = o2[k];
         }
     });
-    s.def('find', path => s.findByArray(Array.isArray(path) ? path : path.split('.')));
-    s.def('findByArray', id => {
-        let node = s;
-        for (let i = 0; i < id.length; i++) {
-            if (typeof node !== 'object' || node === null) {
-                s.l(`node not found: [${id}]`); return;
-            }
-            node = node[id[i]];
-        }
-        return node;
-    });
-    s.def('findByArrayInNode', (nodeForSearch, id) => {
-        let node = nodeForSearch;
-        for (let i = 0; i < id.length; i++) {
-            if (typeof node !== 'object' || node === null) {
-                s.l(`node not found: [${id}]`); return;
-            }
-            node = node[id[i]];
-        }
-        return node;
-    });
-    s.def('findParentAndK', path => {
-        return {
-            parent: path.length === 1 ? s : s.find(path.slice(0, -1)),
-            k: path.at(-1)
-        };
-    });
-    s.def('findParentAndKInNode', (node, path) => {
-        const pathArray = Array.isArray(path) ? path : path.split('.')
-        return {
-            parent: s.findByArrayInNode(node, pathArray.slice(0, -1)),
-            k: pathArray.at(-1)
-        };
-    });
-    s.def('f', (id, ...args) => {
-        try {
-            let node = s.find(id);
-            if (!node || !node.js) {
-                console.log(`js not found by id [${id}]`);
-                return;
-            }
-            if (!node[sys.sym.FN]) {
-                //node[sys.sym.FN] = eval(node.js);
-            }
-            return eval(node.js)(...args);
-        } catch (e) {
-            console.error(id, e);
-        }
-    });
-    s.def('isStr', str => typeof str === 'string');
+
+    s.d('isStr', str => typeof str === 'string');
 
     //GLOBAL PUB SUB
     sys.eventHandlers = {};
@@ -140,6 +235,7 @@
         apply(target, thisArg, args) {
             const handler = args[0];
             const data = args[1];
+
             if (sys.eventHandlers[handler]) {
                 return sys.eventHandlers[handler](data);
             }
@@ -149,14 +245,32 @@
             return true;
         }
     });
-    s.def('pub', () => { });
-    s.def('sub', (k, v) => sys.eventHandlers[k] = v);
-    s.def('unsub', () => { //todo automatic sub, unsub
-        //sys.eventHandlers[k] = v;
+    s.def('sub', ({ path, type, handler, fsWatch }) => {
+
+    });
+    //todo use sub for subscribe
+    s.def('unsub', path => { //todo automatic sub, unsub
+        //delete sys.eventHandlers[path];
+    });
+    s.def('x', ({ path, data }) => {
+        //start
+        //stop
+
+        //s.l(path);
+        //return sys.eventHandlers[path](data);
+    });
+    s.def('isSubExists', () => {
+        //return
     });
     s.def('e', e);
-    //sub создает подписку как на путь в s, а и на путь в папке state
+
+    //s.op(path, op, data);
+
+    //subFS создает подписку как на путь в s, а и на путь в папке state
     //объект также может находится на других нодах, а не на текущей тогда в object._sys_ указывается нода из s.net.nodeName
+
+    //add file watcher to sub. every subscriber can have own realization. but interface for start. stop subscription
+    //slicers pool
 
     if (typeof window !== 'undefined') {
 
@@ -185,8 +299,7 @@
     });
     s.def('getFromDisc', async (path, format = 'json') => {
 
-        let pathArr = path;
-        if (!Array.isArray(pathArr)) pathArr = pathArr.split('.');
+        let pathArr = s.pathToArr(path);
 
         const dir = `state/${pathArr.slice(0, -1).join('/')}`;
         const file = `${dir}/${pathArr.at(-1)}.${format}`;
@@ -199,7 +312,7 @@
     s.def('cpFromDisc', async (path, format = 'json', hiddenProps = {}) => {
         const v = await s.getFromDisc(path, format);
         if (!v) return;
-        s.setPath(path, v, hiddenProps);
+        s.set(path, v, hiddenProps);
     });
     s.def('syncFromDisc', async (path, format = 'json', hiddenProps = {}) => {
 
@@ -216,11 +329,8 @@
     });
     s.def('cpToDisc', async (path, v = null, hiddenProps = {}) => {
 
-        let pathArr = path;
-        //todo this construction is repeating in several places
-        if (!Array.isArray(pathArr)) pathArr = pathArr.split('.');
+        let pathArr = s.pathToArr(path);
 
-        //todo same code below. refactor and remove duplicate
         const dir = `state/${pathArr.slice(0, -1).join('/')}`;
         let file = `${dir}/${pathArr.at(-1)}.`;
 
@@ -230,6 +340,7 @@
 
         if (typeof v === 'object' && v !== null) {
             file += 'json';
+
             if (hiddenProps.each) {
                 const clone = structuredClone(v);
                 for (let k in v) {
@@ -238,11 +349,10 @@
                 v = clone;
             } else if (hiddenProps.one) {
                 const clone = structuredClone(v);
+                const pathArray = s.pathToArr(hiddenProps.one);
 
-                const pathArray = Array.isArray(hiddenProps.one) ? hiddenProps.one : hiddenProps.one.split('.')
-
-                const { parent, k } = s.findParentAndKInNode(clone, hiddenProps.one);
-                parent[k] = s.findByArrayInNode(v, pathArray);
+                const { parent, k } = s.findParentAndK(hiddenProps.one, clone);
+                parent[k] = s.find(pathArray, v);
 
                 v = clone;
             }
@@ -264,6 +374,7 @@
         await s.cpFromDisc('net', 'json', { each: 'token' });
         s.net[sys.sym.IS_LOADED_FROM_DISC] = 1;
     }
+
     if (!sys[sys.sym.IS_LOADED_FROM_DISC]) {
         await s.syncFromDisc('sys');
         sys[sys.sym.IS_LOADED_FROM_DISC] = 1;
@@ -288,9 +399,13 @@
         return list.length === 0;
     }
 
+    //move scripts to state
+    //sub only if no sub already
+    //s.x({path: 'sys.sd', data: { op: 1 }});
+
     //DEFAULT NET
     if (!sys.netId) {
-        await s.cpFromDisc('sys.netId', 'txt', { prop: true });
+        //await s.cpFromDisc('sys.netId', 'txt', { prop: true });
     }
     if (!sys.netId) {
         s.defObjectProp(sys, 'netId', 'defaultNetId');
@@ -628,6 +743,7 @@
                 if (typeof username !== 'string' || typeof password !== 'string') {
                     rs.s({ user: null }); return;
                 }
+                //when try to read, make attempt read from disc
                 const user = s.users[username];
                 if (!user) {
                     rs.s({ user: null }); return;
@@ -701,17 +817,19 @@
     const trigger = async () => {
         console.log('ONCE', new Date);
 
+        //await s.subPath('scripts', );
+
         //controll of watchers from declarativeUI
-        const scriptsDirExists = await s.fsAccess('scripts');
-        if (scriptsDirExists && !s.scriptsWatcher && sys.fsChangesSlicer) {
-            s.def('scriptsWatcher', await s.f('sys.fsChangesSlicer', 'scripts'));
-            s.scriptsWatcher.start();
+        if (s.scriptsSub) {
+            //s.def('scriptsSub', await s.subPath('scripts'));
+            //s.scriptsWatcher.start();
         }
-        if (scriptsDirExists && s.scriptsWatcher) {
+        if (s.scriptsWatcher) {
             await s.syncJsScripts(sys, 'sys');
 
             s.scriptsWatcher.slicer = async (e) => {
                 if (e.eventType !== 'change') return;
+
                 const id = e.filename.slice(0, -3);
                 const node = s.find(id);
                 if (!node) return;
@@ -734,6 +852,13 @@
                 } catch (e) { s.log.error(e.toString(), e.stack); }
             }
         }
+
+        const netId = await s.fsAccess('state/sys/netId.txt');
+        //if (netId && !s.scriptsWatcher && sys.fsChangesSlicer) {
+        //s.def('scriptsWatcher', await s.f('sys.fsChangesSlicer', 'scripts'));
+        //s.scriptsWatcher.start();
+        //}
+
         if (s.server) s.server.listen(8080, () => console.log(`httpServer start port: 8080`));
     }
     s.def('trigger', async () => await trigger());
@@ -759,7 +884,6 @@
 
     const netCmds = s.net[sys.netId].cmds;
 
-    //s.l(netCmds);
     if (!netCmds) return;
 
     for (let i in netCmds) {
