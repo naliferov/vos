@@ -71,74 +71,102 @@
         }
     });
 
-    s.d('stream', async ({ path, type, handler, options = {} }) => {
+    if (!s.streamProto) {
+
+        s.d('streamProto', {
+            [sys.sym.TYPE_STREAM]: true,
+            broacast: (path, op, data) => { },
+            getFsPath(path) {
+                if (path) {
+                    return 'state/' + path.join('/');
+                }
+                return 'state/' + this.path.join('/');
+            },
+            async start() {
+                const fsPath = this.getFsPath();
+
+                if (this.options.useFS) {
+
+                    if (this.data) {
+                        if (this.path.length > 1) {
+                            const fsDirPath = this.getFsPath(this.path.slice(0, -1));
+                            if (!await s.fsAccess(fsDirPath)) {
+                                await s.nodeFS.mkdir(fsDirPath, { recursive: true });
+                            }
+                        }
+                        if (await s.fsAccess(fsPath)) {
+                            let fsV = (await s.nodeFS.readFile(fsPath, 'utf8')).trim();
+                            if (fsV !== this.serialize()) {
+                                s.nodeFS.writeFile(fsPath, this.serialize());
+                            }
+                        } else {
+                            s.nodeFS.writeFile(fsPath, this.serialize());
+                        }
+
+                    } else if (await s.fsAccess(fsPath)) {
+                        const json = (await s.nodeFS.readFile(fsPath, 'utf8')).trim();
+                        this.data = JSON.parse(json).v;
+                    }
+
+                    const fs = s.fsChangesStream(fsPath);
+                    this.internalStreams.fs = fs;
+                    fs.eventHandler = async e => {
+                        if (e.eventType !== 'change') return;
+                        const json = (await s.nodeFS.readFile(fsPath, 'utf8')).trim();
+                        if (json !== this.serialize()) this.data = JSON.parse(json).v;
+                    }
+                    fs.start();
+                }
+
+                if (!this.data && this.dataDefault !== undefined) {
+                    this.data = this.dataDefault;
+                }
+                s.set(this.path, this);
+                this.isWorking = true;
+            },
+            stop() {
+                if (this.options.useFS) {
+                    this.internalStreams.fs.stop();
+                }
+                this.isWorking = false;
+            },
+            set(v) {
+                if (v === undefined) return;
+                this.data = v;
+                if (this.options.useFS) {
+                    s.nodeFS.writeFile(this.getFsPath(), this.serialize());
+                }
+            },
+            get() { return this.data; },
+            connect(stream) { },
+            disconnect(stream) { },
+            serialize() {
+                //todo circular refrences
+                return JSON.stringify({ v: this.data });
+            },
+        });
+    }
+    s.d('u', async ({ path, type, val, options = {} }) => {
 
         const pathArr = s.pathToArr(path);
         let v = s.find(pathArr);
         if (typeof v === 'object' && v !== null && v[sys.sym.TYPE_STREAM]) {
             return v;
         }
-
-        //create streamProto and use Object.create
-        const stream = {
-            id: await s.f('sys.uuid'),
-            [sys.sym.TYPE_STREAM]: true,
-            isWorking: false,
-
-            path,
-            data: undefined,
-            options,
-
-            internalStreams: new Set, //fs, http, ws, ssh and etc.
-            connectedStreams: new Set,
-            broacast: (path, op, data) => {
-
-            },
-            async start() {
-                const fsPath = 'state/' + pathArr.join('/');
-
-                if (options.useFS && await s.fsAccess(fsPath)) {
-
-                    if (!v) {
-                        v = (await s.nodeFS.readFile(fsPath, 'utf8')).trim();
-                        if (typeof v === 'object' && v !== null) {
-                            v = JSON.parse(v);
-                        }
-                    }
-                    const fs = s.fsChangesStream(fsPath);
-                    this.internalStreams.fs = fs;
-                    fs.eventHandler = async e => {
-                        if (e.eventType !== 'change') return;
-                        v = (await s.nodeFS.readFile(fsPath, 'utf8')).trim();
-                        //if object compare two jsons
-                        if (this.data !== v) this.data = v;
-                    }
-                    fs.start();
-                }
-
-                if (v) {
-                    this.data = v;
-                    s.set(path, stream);
-                }
-                this.isWorking = true;
-            },
-            stop() {
-                if (options.useFS) this.internalStreams.fs.stop();
-                this.isWorking = false;
-                s.l('test of stop working');
-            },
-            set(v) { },
-            get() { return s.find(path); },
-            mv() { },
-            rm() { },
-            connect(stream) { },
-            disconnect(stream) { },
-            serialize() { },
-        };
-        stream.start();
+        const stream = Object.create(s.streamProto);
+        stream.isWorking = false;
+        stream.path = pathArr;
+        stream.type = type;
+        stream.data = v || undefined;
+        stream.dataDefault = val;
+        stream.options = options;
+        stream.internalStreams = new Map; //callback, fs, http, ws, ssh and etc.
+        stream.connectedStreams = new Set;
+        await stream.start();
 
         return stream;
     });
+
     s.def('fsChangesStream', path => {
         return {
             isStarted: false,
@@ -154,7 +182,7 @@
             eventHandler: null,
         }
     });
-    s.d('create', (path, type) => {
+    s.d('create', path => {
         let pathArr = s.pathToArr(path);
         let node = s;
 
@@ -168,10 +196,12 @@
         return node;
     });
     s.d('set', (path, v, hiddenProps = {}) => {
-        //todo need func resolve path from str and array;
-        const pathArr = s.pathToArr(path);
-        const { parent, k } = s.findParentAndK(pathArr);
 
+        const pathArr = s.pathToArr(path);
+        if (pathArr.length > 1) {
+            s.create(pathArr.slice(0, -1));
+        }
+        const { parent, k } = s.findParentAndK(pathArr);
         if (!parent || !k || !v) return;
 
         //HIDE PROP LOGIC move to other function
@@ -291,21 +321,9 @@
             return true;
         }
     });
-
-    //ip, ssh, http, sshKey,
-    //slicers pool
     //move scripts to state
-    //sub only if no sub already
-    //todo use sub for subscribe //s.x({path: 'sys.sd', data: { op: 1 }});
-
-    s.def('unsub', path => { //todo automatic sub, unsub
-        //delete sys.eventHandlers[path];
-    });
     s.def('x', ({ path, op, data }) => {
         //return sys.eventHandlers[path](data);
-    });
-    s.def('isSubExists', () => {
-        //return
     });
     s.def('e', e);
 
@@ -419,15 +437,6 @@
         sys[sys.sym.IS_LOADED_FROM_DISC] = 1;
     }
 
-    //stream test
-    const sysNetIdStream = await s.stream({
-        path: 'sys.netId', handler: (e) => {
-            s.l('stream test', e);
-        }, options: { useFS: true }
-    });
-    //sysNetIdStream.stop();
-    //s.l(sysNetIdStream);
-
     sys.getRandStr = length => {
         const symbols = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_-+=<>?';
         const str = [];
@@ -445,19 +454,14 @@
         return list.length === 0;
     }
 
-    //DEFAULT NET
-    if (!sys.netId) {
-        //await s.cpFromDisc('sys.netId', 'txt', { prop: true });
-    }
-    if (!sys.netId) {
-        //s.defObjectProp(sys, 'netId', 'defaultNetId');
-        //await s.cpToDisc('sys.netId');
-    }
-    if (sys.netId && !s.net[sys.netId]) {
-        //s.net[sys.netId] = {};
-        //s.defObjectProp(s.net[sys.netId], 'token', sys.getRandStr(27));
-        //await s.cpToDisc('net', null, { each: 'token' });
-    }
+    await s.u({
+        path: 'sys.netId', val: 'defaultNetId', options: { useFS: true }
+    });
+    //if (sys.netId.get() && !s.net[sys.netId]) {
+    //s.net[sys.netId] = {};
+    //s.defObjectProp(s.net[sys.netId], 'token', sys.getRandStr(27));
+    //await s.cpToDisc('net', null, { each: 'token' });
+    //}
 
     if (s.f('sys.isEmptyObject', s.users) && await sys.isEmptyDir('state/users', ['.gitignore'])) {
         await s.cpFromDisc('users.root', 'json', { one: '_sys_.password' });
