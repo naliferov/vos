@@ -77,50 +77,51 @@
             [sys.sym.TYPE_STREAM]: true,
             broacast: (path, op, data) => { },
             getFsPath(path) {
-                if (path) {
-                    return 'state/' + path.join('/');
-                }
-                return 'state/' + this.path.join('/');
+                if (path) return 'state/' + path.join('/');
+
+                let pathStr = 'state/' + this.path.join('/');
+                if (this.type === 'js') pathStr += '.js';
+                if (this.type === 'css') pathStr += '.css';
+
+                return pathStr;
             },
-            async start() {
+            async useFSLogic() {
+
                 const fsPath = this.getFsPath();
 
-                if (this.options.useFS) {
+                const createFSPath = async () => {
 
-                    if (this.data) {
-                        if (this.path.length > 1) {
-                            const fsDirPath = this.getFsPath(this.path.slice(0, -1));
-                            if (!await s.fsAccess(fsDirPath)) {
-                                await s.nodeFS.mkdir(fsDirPath, { recursive: true });
-                            }
+                    if (this.path.length > 1) {
+                        const fsDir = this.getFsPath(this.path.slice(0, -1));
+                        if (!await s.fsAccess(fsDir)) {
+                            await s.nodeFS.mkdir(fsDir, { recursive: true });
                         }
-                        if (await s.fsAccess(fsPath)) {
-                            let fsV = (await s.nodeFS.readFile(fsPath, 'utf8')).trim();
-                            if (fsV !== this.serialize()) {
-                                s.nodeFS.writeFile(fsPath, this.serialize());
-                            }
-                        } else {
-                            s.nodeFS.writeFile(fsPath, this.serialize());
-                        }
-
-                    } else if (await s.fsAccess(fsPath)) {
-                        const json = (await s.nodeFS.readFile(fsPath, 'utf8')).trim();
-                        this.data = JSON.parse(json).v;
                     }
-
-                    const fs = s.fsChangesStream(fsPath);
-                    this.internalStreams.fs = fs;
-                    fs.eventHandler = async e => {
-                        if (e.eventType !== 'change') return;
-                        const json = (await s.nodeFS.readFile(fsPath, 'utf8')).trim();
-                        if (json !== this.serialize()) this.data = JSON.parse(json).v;
-                    }
-                    fs.start();
+                    s.nodeFS.writeFile(fsPath, this.serialize());
                 }
 
-                if (!this.data && this.dataDefault !== undefined) {
-                    this.data = this.dataDefault;
+                if (this.data) await createFSPath();
+                else {
+                    this.data = await this.getDataFromFS();
+                    if (!this.data && this.dataDefault) {
+                        this.data = this.dataDefault;
+                        await createFSPath();
+                    }
                 }
+
+                const fs = s.fsChangesStream(fsPath);
+                this.internalStreams.fs = fs;
+                fs.eventHandler = async e => {
+                    if (e.eventType !== 'change') return;
+                    const data = await this.getDataFromFS(true);
+                    if (data !== this.serialize()) {
+                        this.set(await this.getDataFromFS(), 'fs');
+                    }
+                }
+                fs.start();
+            },
+            async start() {
+                if (this.options.useFS) await this.useFSLogic();
                 s.set(this.path, this);
                 this.isWorking = true;
             },
@@ -130,18 +131,34 @@
                 }
                 this.isWorking = false;
             },
-            set(v) {
+            set(v, source = '') {
                 if (v === undefined) return;
                 this.data = v;
-                if (this.options.useFS) {
+                if (!this.isWorking) return;
+
+                if (this.options.useFS && source !== 'fs') {
                     s.nodeFS.writeFile(this.getFsPath(), this.serialize());
                 }
+                //trigger all connected subscribers
+                //check and trigger every parent
+                //check and trigger every child
             },
             get() { return this.data; },
             connect(stream) { },
             disconnect(stream) { },
+
+            async getDataFromFS(rawText) {
+                let fsPath = this.getFsPath();
+                if (!await s.fsAccess(fsPath)) return;
+                const data = (await s.nodeFS.readFile(fsPath, 'utf8')).trim();
+
+                if (rawText) return data;
+                if (this.type === 'js' || this.type === 'css') return data;
+
+                return JSON.parse(data).v
+            },
             serialize() {
-                //todo circular refrences
+                if (this.type === 'js') return this.data.js;
                 return JSON.stringify({ v: this.data });
             },
         });
@@ -157,8 +174,9 @@
         stream.isWorking = false;
         stream.path = pathArr;
         stream.type = type;
-        stream.data = v || undefined;
+        stream.data = v;
         stream.dataDefault = val;
+        stream.fn = undefined;
         stream.options = options;
         stream.internalStreams = new Map; //callback, fs, http, ws, ssh and etc.
         stream.connectedStreams = new Set;
@@ -228,7 +246,6 @@
                 }
             }
         }
-
         parent[k] = v;
     });
     s.d('cp', (oldPath, newPath) => {
@@ -328,7 +345,7 @@
     s.def('e', e);
 
     //объект также может находится на других нодах, а не на текущей тогда в object._sys_ указывается нода из s.net.nodeName
-    //add file watcher to sub. every subscriber can have own realization. but interface for start. stop subscription
+    //add file watcher to sub. every subscriber can have own realization. but interface for start stop subscription
 
     if (typeof window !== 'undefined') {
 
@@ -457,6 +474,16 @@
     await s.u({
         path: 'sys.netId', val: 'defaultNetId', options: { useFS: true }
     });
+    // const str = await s.u({
+    //     path: 'sys.test.netId', val: 'defaultNetIdWW', options: { useFS: true }
+    // });
+    // s.l(str.get());
+
+    //delete sys.checkUpdatePermission; await s.cpToDisc('sys');
+    s.l(Object.keys(sys));
+
+    //await s.u({ path: 'sys.checkUpdatePermission', type: 'js', options: { useFS: true } });
+
     //if (sys.netId.get() && !s.net[sys.netId]) {
     //s.net[sys.netId] = {};
     //s.defObjectProp(s.net[sys.netId], 'token', sys.getRandStr(27));
