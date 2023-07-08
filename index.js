@@ -55,20 +55,28 @@
             k: pathArr.at(-1)
         };
     });
-    s.d('f', (id, ...args) => {
+    s.d('f', async (path, ...args) => {
         try {
-            let node = s.find(id);
-            if (!node || !node.js) {
-                console.log(`js not found by id [${id}]`);
+            let node = s.find(path);
+
+            s.l(node);
+            if (!node) {
+                if (!await s.isPathOnFSExists(path, 'js')) return;
+                node = await s.u({ path, type: 'js', options: { useFS: true } });
+            }
+
+            let js;
+            if (node[sys.sym.TYPE_STREAM]) js = node.get();
+            else if (node.js) js = node.js;
+
+            if (!js) {
+                console.log(`js not found by path [${path}]`);
                 return;
             }
-            if (!node[sys.sym.FN]) {
-                //node[sys.sym.FN] = eval(node.js);
-            }
-            return eval(node.js)(...args);
-        } catch (e) {
-            console.error(id, e);
-        }
+            //if (!node[sys.sym.FN]) node[sys.sym.FN] = eval(node.js);
+            return eval(js)(...args);
+
+        } catch (e) { console.error(path, e); }
     });
 
     if (!s.streamProto) {
@@ -97,7 +105,7 @@
                             await s.nodeFS.mkdir(fsDir, { recursive: true });
                         }
                     }
-                    s.nodeFS.writeFile(fsPath, this.serialize());
+                    await s.nodeFS.writeFile(fsPath, this.serialize());
                 }
 
                 if (this.data) await createFSPath();
@@ -154,11 +162,12 @@
 
                 if (rawText) return data;
                 if (this.type === 'js' || this.type === 'css') return data;
+                if (this.type === 'string' || this.type === 'number') return data;
 
                 return JSON.parse(data).v
             },
             serialize() {
-                if (this.type === 'js') return this.data.js;
+                if (this.type === 'js') return this.data.js; //todo change this after moving all sys to fs
                 return JSON.stringify({ v: this.data });
             },
         });
@@ -323,7 +332,7 @@
     });
 
     //GLOBAL PUB SUB
-    sys.eventHandlers = {};
+    s.defObjectProp(sys, 'eventHandlers', {});
     globalThis.e = new Proxy(() => { }, {
         apply(target, thisArg, args) {
             const handler = args[0];
@@ -365,33 +374,35 @@
     s.def('process', (await import('node:process')).default);
     s.def('processStop', () => { s.l('stop process ', s.process.pid); s.process.exit(0); });
     //s.def('processRestart', () => { s.l('stop process ', s.process.pid); s.process.exit(0); });
-    s.def('nodeFS', (await import('node:fs')).promises);
     s.def('nodeCrypto', await import('node:crypto'));
+    s.def('nodeFS', (await import('node:fs')).promises);
     s.def('fsAccess', async path => {
         try { await s.nodeFS.access(path); return true; }
         catch { return false; }
     });
+    s.def('pathToFSPath', path => `state/${s.pathToArr(path).join('/')}`);
+    s.def('isPathOnFSExists', async (path, fileExtension = '') => {
+        const fsPath = s.pathToFSPath(path) + (fileExtension ? '.' + fileExtension : '');
+        return await s.fsAccess(fsPath);
+    });
+    s.def('getFromFS', async (path, format = 'json') => {
 
-    s.def('getFromDisc', async (path, format = 'json') => {
+        let fsPath = s.pathToFSPath(path);
+        if (!await s.fsAccess(fsPath)) return;
 
-        let pathArr = s.pathToArr(path);
+        if (format === 'json') fsPath += '.json';
 
-        const dir = `state/${pathArr.slice(0, -1).join('/')}`;
-        const file = `${dir}/${pathArr.at(-1)}.${format}`;
-
-        if (!await s.fsAccess(file)) return;
-
-        const str = (await s.nodeFS.readFile(file, 'utf8')).trim();
+        const str = (await s.nodeFS.readFile(fsPath, 'utf8')).trim();
         return format === 'json' ? JSON.parse(str) : str;
     });
-    s.def('cpFromDisc', async (path, format = 'json', hiddenProps = {}) => {
-        const v = await s.getFromDisc(path, format);
+    s.def('cpFromFS', async (path, format = 'json', hiddenProps = {}) => {
+        const v = await s.getFromFS(path, format);
         if (!v) return;
         s.set(path, v, hiddenProps);
     });
     s.def('syncFromDisc', async (path, format = 'json', hiddenProps = {}) => {
 
-        const state = await s.getFromDisc(path, format);
+        const state = await s.getFromFS(path, format);
         if (!state) return;
 
         const currentState = s.find(path);
@@ -446,15 +457,14 @@
 
     //LOAD NET, SYS
     if (!s.net[sys.sym.IS_LOADED_FROM_DISC]) {
-        await s.cpFromDisc('net', 'json', { each: 'token' });
+        await s.cpFromFS('net', 'json', { each: 'token' });
         s.net[sys.sym.IS_LOADED_FROM_DISC] = 1;
     }
     if (!sys[sys.sym.IS_LOADED_FROM_DISC]) {
         await s.syncFromDisc('sys');
         sys[sys.sym.IS_LOADED_FROM_DISC] = 1;
     }
-
-    sys.getRandStr = length => {
+    s.defObjectProp(sys, 'getRandStr', (length) => {
         const symbols = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_-+=<>?';
         const str = [];
         for (let i = 0; i < length; i++) {
@@ -462,27 +472,30 @@
             str.push(symbols.charAt(randomIndex));
         }
         return str.join('');
-    }
-    sys.isEmptyDir = async (dir, ignore = []) => {
+    });
+    s.defObjectProp(sys, 'isEmptyDir', async (dir, ignore = []) => {
         let list = await s.nodeFS.readdir(dir);
         if (list.length === 0) return true;
 
         list = list.filter(i => !ignore.includes(i));
         return list.length === 0;
-    }
+    });
 
+    s.l(Object.keys(sys));
     await s.u({
         path: 'sys.netId', val: 'defaultNetId', options: { useFS: true }
     });
-    // const str = await s.u({
-    //     path: 'sys.test.netId', val: 'defaultNetIdWW', options: { useFS: true }
-    // });
-    // s.l(str.get());
 
-    //delete sys.checkUpdatePermission; await s.cpToDisc('sys');
-    s.l(Object.keys(sys));
+    // delete sys.fs;
+    // delete sys.UI;
+    //delete sys.apps; await s.cpToDisc('sys');
 
-    //await s.u({ path: 'sys.checkUpdatePermission', type: 'js', options: { useFS: true } });
+    // await s.u({ path: 'sys.apps.monacoEditor', type: 'js', options: { useFS: true } });
+    // await s.u({ path: 'sys.apps.txtEditor', type: 'js', options: { useFS: true } });
+    // await s.u({ path: 'sys.apps.dataBrowser', type: 'js', options: { useFS: true } });
+    // await s.u({ path: 'sys.apps.terminal', type: 'js', options: { useFS: true } });
+    // await s.u({ path: 'sys.apps.auth', type: 'js', options: { useFS: true } });
+    // await s.u({ path: 'sys.apps.fileUploader', type: 'js', options: { useFS: true } });
 
     //if (sys.netId.get() && !s.net[sys.netId]) {
     //s.net[sys.netId] = {};
@@ -490,15 +503,21 @@
     //await s.cpToDisc('net', null, { each: 'token' });
     //}
 
-    if (s.f('sys.isEmptyObject', s.users) && await sys.isEmptyDir('state/users', ['.gitignore'])) {
-        await s.cpFromDisc('users.root', 'json', { one: '_sys_.password' });
+    //s.l(await s.f('sys.isEmptyObject', s.users));
 
-        if (!s.users.root) {
-            s.users.root = { _sys_: {} };
-            s.defObjectProp(s.users.root._sys_, 'password', sys.getRandStr(25));
-            await s.cpToDisc('users.root', null, { one: '_sys_.password' });
-        }
-    }
+    // if (s.f('sys.isEmptyObject', s.users) && await sys.isEmptyDir('state/users', ['.gitignore'])) {
+    //     await s.cpFromDisc('users.root', 'json', { one: '_sys_.password' });
+
+    //     if (!s.users.root) {
+    //         s.users.root = { _sys_: {} };
+    //         s.defObjectProp(s.users.root._sys_, 'password', sys.getRandStr(25));
+    //         await s.cpToDisc('users.root', null, { one: '_sys_.password' });
+    //     }
+    // }
+
+    //s.l(sys.httpClient);
+    //s.l(await s.f('sys.httpClient'));
+    return;
 
     if (!sys.netUpdateIds) s.defObjectProp(sys, 'netUpdateIds', new Map);
 
@@ -584,7 +603,7 @@
         }
         //delete what not exists in state
         s.merge(currentState, state);
-        s.l('syncPath', path, Object.keys(state).length);
+        //s.l('syncPath', path, Object.keys(state).length);
     }
     if (!s.connectedSSERequests) s.def('connectedSSERequests', new Map);
 

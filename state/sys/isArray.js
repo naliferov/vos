@@ -1,0 +1,1 @@
+d => Array.isArray(d)
