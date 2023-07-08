@@ -517,7 +517,6 @@
 
     //s.l(sys.httpClient);
     //s.l(await s.f('sys.httpClient'));
-    return;
 
     if (!sys.netUpdateIds) s.defObjectProp(sys, 'netUpdateIds', new Map);
 
